@@ -32,7 +32,6 @@ from monty.serialization import loadfn, dumpfn
 from unfold import find_K_from_k
 import math
 
-
 class HSEStaticFW(Firework):
     def __init__(self, structure=None, name="HSE_scf", vasp_input_set_params=None,
                  vasp_cmd=VASP_CMD, prev_calc_dir=None, db_file=DB_FILE, vasptodb_kwargs=None,

@@ -1,0 +1,12 @@
+{
+    "admin_password": "qiminyan",
+    "admin_user": "adminUser",
+    "aliases": {},
+    "collection": "VaspTasks_v1",
+    "database": "2dMaterials_from_icsd_v1",
+    "host": "localhost",
+    "port": 1234,
+    "readonly_password": "qiminyan",
+    "readonly_user": "readUser"
+}
+
