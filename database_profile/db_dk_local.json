@@ -1,0 +1,12 @@
+{
+    "admin_password": "qiminyan",
+    "admin_user": "adminUser",
+    "aliases": {},
+    "collection": "2dMaterial_v1",
+    "database": "2dMat_from_cmr_fysik",
+    "host": "localhost",
+    "port": 1234,
+    "readonly_password": "qiminyan",
+    "readonly_user": "readUser"
+}
+
