@@ -1,6 +1,6 @@
 # qubitPack
 ## Project: antisiteQubit
 ## Tools: 
-  ### generating related WF/FW
-  ### searching for defect levels and plotting figures
-  ### Implementing extropolation of formation energies with different geometries and determining size-independent ionized energy with plots
+  1. generating related WF/FW
+  2. searching for defect levels and plotting figures
+  3. Implementing extropolation of formation energies with different geometries and determining size-independent ionized energy with plots
