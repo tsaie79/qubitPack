@@ -1,0 +1,12 @@
+{
+    "admin_password": "qimin",
+    "admin_user": "Jeng",
+    "aliases": {},
+    "collection": "compare_singlet_triplet",
+    "database": "owls",
+    "host": "localhost",
+    "port": 1234,
+    "readonly_password": "qimin",
+    "readonly_user": "Jeng_ro"
+}
+
