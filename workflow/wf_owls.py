@@ -5,12 +5,12 @@ from atomate.vasp.firetasks.glue_tasks import CopyVaspOutputs
 from atomate.vasp.firetasks.parse_outputs import VaspToDb
 from atomate.vasp.firetasks.write_inputs import WriteVaspHSEBSFromPrev, WriteVaspFromIOSet, WriteVaspFromPMGObjects, \
     ModifyIncar, WriteVaspStaticFromPrev
-from atomate.vasp.firetasks.write_inputs import RmSelectiveDynPoscar, SelectiveDynmaicPoscar
 from atomate.vasp.powerups import use_fake_vasp, add_namefile, add_additional_fields_to_taskdocs, preserve_fworker,\
     add_modify_incar, add_modify_kpoints, set_queue_options, set_execution_options
 from atomate.vasp.firetasks.run_calc import RunVaspCustodian
 from atomate.common.firetasks.glue_tasks import PassCalcLocs
 from atomate.vasp.fireworks.core import OptimizeFW, StaticFW, ScanOptimizeFW
+from atomate.vasp.fireworks.jcustom import *
 from atomate.vasp.config import HALF_KPOINTS_FIRST_RELAX, RELAX_MAX_FORCE, VASP_CMD, DB_FILE
 from atomate.vasp.database import VaspCalcDb
 from atomate.vasp.workflows.presets.core import wf_static, wf_structure_optimization
@@ -31,193 +31,6 @@ import numpy as np
 from monty.serialization import loadfn, dumpfn
 from unfold import find_K_from_k
 import math
-
-class HSEStaticFW(Firework):
-    def __init__(self, structure=None, name="HSE_scf", vasp_input_set_params=None,
-                 vasp_cmd=VASP_CMD, prev_calc_dir=None, db_file=DB_FILE, vasptodb_kwargs=None,
-                 parents=None, cp_chargcar=True, **kwargs):
-        t = []
-
-        vasp_input_set_params = vasp_input_set_params or {}
-        vasptodb_kwargs = vasptodb_kwargs or {}
-        if "additional_fields" not in vasptodb_kwargs:
-            vasptodb_kwargs["additional_fields"] = {}
-        vasptodb_kwargs["additional_fields"]["task_label"] = name
-
-        fw_name = "{}-{}".format(structure.composition.reduced_formula if structure else "unknown", name)
-
-        if prev_calc_dir:
-            t.append(
-                CopyVaspOutputs(calc_dir=prev_calc_dir, additional_files=["CHGCAR"] if cp_chargcar else [])
-            )
-        elif parents:
-            t.append(CopyVaspOutputs(calc_loc=True, additional_files=["CHGCAR"] if cp_chargcar else []))
-        else:
-            raise ValueError("Must specify structure or previous calculation")
-        t.append(WriteVaspHSEBSFromPrev(mode="uniform", reciprocal_density=None, kpoints_line_density=None))
-        t.append(RmSelectiveDynPoscar())
-        magmom = MPRelaxSet(structure).incar.get("MAGMOM", None)
-        if magmom:
-            t.append(ModifyIncar(incar_update={"MAGMOM": magmom}))
-        t.append(ModifyIncar(incar_update=vasp_input_set_params.get("user_incar_settings", {})))
-        t.append(WriteVaspFromPMGObjects(kpoints=vasp_input_set_params.get("user_kpoints_settings", {})))
-        t.append(RunVaspCustodian(vasp_cmd=vasp_cmd, auto_npar=">>auto_npar<<"))
-        t.append(PassCalcLocs(name=name))
-        t.append(VaspToDb(db_file=db_file, bandstructure_mode="uniform", parse_eigenvalues=True, parse_dos=True,
-                          **vasptodb_kwargs))
-        super(HSEStaticFW, self).__init__(t, parents=parents, name=fw_name, **kwargs)
-
-
-class HSERelaxFW(Firework):
-    def __init__(self, structure=None, name="HSE_relax", vasp_input_set_params={},
-                 vasp_cmd=VASP_CMD, db_file=DB_FILE, vasptodb_kwargs=None,
-                 parents=None, wall_time=None, **kwargs):
-        """
-        Standard static calculation Firework - either from a previous location or from a structure.
-        Args:
-            structure (Structure): Input structure. Note that for prev_calc_loc jobs, the structure
-                is only used to set the name of the FW and any structure with the same composition
-                can be used.
-            name (str): Name for the Firework.
-            vasp_input_set (VaspInputSet): input set to use (for jobs w/no parents)
-                Defaults to MPStaticSet() if None.
-            vasp_input_set_params (dict): Dict of vasp_input_set kwargs.
-            vasp_cmd (str): Command to run vasp.
-            prev_calc_loc (bool or str): If true (default), copies outputs from previous calc. If
-                a str value, retrieves a previous calculation output by name. If False/None, will create
-                new static calculation using the provided structure.
-            prev_calc_dir (str): Path to a previous calculation to copy from
-            db_file (str): Path to file specifying db credentials.
-            parents (Firework): Parents of this particular Firework. FW or list of FWS.
-            vasptodb_kwargs (dict): kwargs to pass to VaspToDb
-            \*\*kwargs: Other kwargs that are passed to Firework.__init__.
-        """
-        t = []
-        vasptodb_kwargs = vasptodb_kwargs or {}
-        if "additional_fields" not in vasptodb_kwargs:
-            vasptodb_kwargs["additional_fields"] = {}
-        vasptodb_kwargs["additional_fields"]["task_label"] = name
-
-        fw_name = "{}-{}".format(structure.composition.reduced_formula if structure else "unknown", name)
-
-        if parents:
-            t.append(CopyVaspOutputs(calc_loc=True)) #, additional_files=["CHGCAR"]))
-
-        else:
-            raise ValueError("Must specify the parent")
-        t.append(WriteVaspHSEBSFromPrev(mode="uniform", reciprocal_density=None, kpoints_line_density=None))
-        hse_relax_vis_incar = MPHSERelaxSet(structure=structure).incar
-        magmom = MPRelaxSet(structure).incar.get("MAGMOM", None)
-        if magmom:
-            t.append(ModifyIncar(incar_update={"MAGMOM": magmom}))
-        t.append(ModifyIncar(incar_update=hse_relax_vis_incar))
-        if vasp_input_set_params.get("user_incar_settings", {}):
-            t.append(ModifyIncar(incar_update=vasp_input_set_params.get("user_incar_settings", {})))
-        if vasp_input_set_params.get("user_kpoints_settings", {}):
-            t.append(WriteVaspFromPMGObjects(kpoints=vasp_input_set_params.get("user_kpoints_settings", {})))
-        else:
-            t.append(WriteVaspFromPMGObjects(kpoints=MPRelaxSet(structure=structure, force_gamma=True).kpoints.as_dict()))
-        t.append(RunVaspCustodian(vasp_cmd=vasp_cmd, auto_npar=">>auto_npar<<", max_errors=5, wall_time=wall_time))
-        t.append(PassCalcLocs(name=name))
-        t.append(VaspToDb(db_file=db_file, **vasptodb_kwargs))
-        super(HSERelaxFW, self).__init__(t, parents=parents, name=fw_name, **kwargs)
-
-
-class HSEcDFTFW(Firework):
-    def __init__(self, prev_calc_dir, structure=None, read_structure_from=None, name="HSE_cDFT",
-                 vasp_input_set_params=None,
-                 vasp_cmd=VASP_CMD, db_file=DB_FILE, vasptodb_kwargs=None,
-                 parents=None, selective_dynamics=None, **kwargs):
-
-        t = []
-        vasp_input_set_params = vasp_input_set_params or {}
-        vasptodb_kwargs = vasptodb_kwargs or {}
-        if "additional_fields" not in vasptodb_kwargs:
-            vasptodb_kwargs["additional_fields"] = {}
-        vasptodb_kwargs["additional_fields"]["task_label"] = name
-
-        fw_name = "{}-{}".format(structure.composition.reduced_formula if structure else "unknown", name)
-
-        if read_structure_from:
-            t.append(CopyVaspOutputs(additional_files=["WAVECAR"], calc_dir=read_structure_from))
-        elif parents:
-            t.append(CopyVaspOutputs(additional_files=["WAVECAR"], calc_dir=True))
-            t.append(WriteVaspHSEBSFromPrev(mode="uniform", reciprocal_density=None, kpoints_line_density=None))
-        else:
-            t.append(CopyVaspOutputs(additional_files=["WAVECAR"], calc_dir=prev_calc_dir))
-            t.append(WriteVaspHSEBSFromPrev(prev_calc_dir=prev_calc_dir,
-                                            mode="uniform", reciprocal_density=None, kpoints_line_density=None))
-        magmom = MPRelaxSet(structure).incar.get("MAGMOM", None)
-        if magmom:
-            t.append(ModifyIncar(incar_update={"MAGMOM": magmom}))
-        t.append(ModifyIncar(incar_update=vasp_input_set_params.get("user_incar_settings", {})))
-        if selective_dynamics:
-            t.append(SelectiveDynmaicPoscar(selective_dynamics=selective_dynamics, nsites=len(structure.sites)))
-        t.append(WriteVaspFromPMGObjects(kpoints=vasp_input_set_params.get("user_kpoints_settings", {})))
-        t.append(RunVaspCustodian(vasp_cmd=vasp_cmd, auto_npar=">>auto_npar<<"))
-        t.append(PassCalcLocs(name=name))
-        t.append(VaspToDb(db_file=db_file, bandstructure_mode="uniform", parse_dos=True,
-                          parse_eigenvalues=True, **vasptodb_kwargs))
-        super(HSEcDFTFW, self).__init__(t, parents=parents, name=fw_name, **kwargs)
-
-
-class PBEcDFTRelaxFW(Firework):
-    def __init__(self, prev_calc_dir, vis="MPRelaxSet", structure=None, read_structure_from=None, name="cDFT_PBE_relax",
-                 vasp_input_set_params=None, vasp_cmd=VASP_CMD, db_file=DB_FILE, vasptodb_kwargs=None,
-                 parents=None, wall_time=None, **kwargs):
-        t = []
-
-        vasp_input_set_params = vasp_input_set_params or {}
-        vasptodb_kwargs = vasptodb_kwargs or {}
-        if "additional_fields" not in vasptodb_kwargs:
-            vasptodb_kwargs["additional_fields"] = {}
-        vasptodb_kwargs["additional_fields"]["task_label"] = name
-
-        fw_name = "{}-{}".format(structure.composition.reduced_formula if structure else "unknown", name)
-        if read_structure_from:
-            t.append(CopyVaspOutputs(additional_files=["WAVECAR"], calc_dir=read_structure_from, contcar_to_poscar=True))
-        else:
-            t.append(CopyVaspOutputs(additional_files=["WAVECAR"], calc_dir=prev_calc_dir))
-            t.append(WriteVaspFromIOSet(structure=structure, vasp_input_set=vis))
-        magmom = MPRelaxSet(structure).incar.get("MAGMOM", None)
-        if magmom:
-            t.append(ModifyIncar(incar_update={"MAGMOM": magmom}))
-        t.append(ModifyIncar(incar_update=vasp_input_set_params.get("user_incar_settings", {})))
-        t.append(WriteVaspFromPMGObjects(kpoints=vasp_input_set_params.get("user_kpoints_settings", {})))
-        t.append(RunVaspCustodian(vasp_cmd=vasp_cmd, auto_npar=">>auto_npar<<", max_errors=5, wall_time=wall_time))
-        t.append(PassCalcLocs(name=name))
-        t.append(VaspToDb(db_file=db_file, **vasptodb_kwargs))
-        super(PBEcDFTRelaxFW, self).__init__(t, parents=parents, name=fw_name, **kwargs)
-
-
-class PBEcDFTStaticFW(Firework):
-    def __init__(self, structure, name="cDFT_PBE_scf",
-                 vasp_input_set_params=None, vasp_cmd=VASP_CMD, db_file=DB_FILE, vasptodb_kwargs=None,
-                 parents=None, wall_time=None, **kwargs):
-        t = []
-
-        vasp_input_set_params = vasp_input_set_params or {}
-        vasptodb_kwargs = vasptodb_kwargs or {}
-        if "additional_fields" not in vasptodb_kwargs:
-            vasptodb_kwargs["additional_fields"] = {}
-        vasptodb_kwargs["additional_fields"]["task_label"] = name
-
-        fw_name = "{}-{}".format(structure.composition.reduced_formula if structure else "unknown", name)
-        if parents:
-            t.append(CopyVaspOutputs(calc_loc=True, contcar_to_poscar=True))
-        else:
-            t.append(CopyVaspOutputs(additional_files=["CHGCAR"], calc_loc=True))
-        magmom = MPRelaxSet(structure).incar.get("MAGMOM", None)
-        if magmom:
-            t.append(ModifyIncar(incar_update={"MAGMOM": magmom}))
-        t.append(WriteVaspStaticFromPrev())
-        t.append(ModifyIncar(incar_update=vasp_input_set_params.get("user_incar_settings", {})))
-        t.append(WriteVaspFromPMGObjects(kpoints=vasp_input_set_params.get("user_kpoints_settings", {})))
-        t.append(RunVaspCustodian(vasp_cmd=vasp_cmd, auto_npar=">>auto_npar<<", max_errors=5, wall_time=wall_time))
-        t.append(PassCalcLocs(name=name))
-        t.append(VaspToDb(db_file=db_file, bandstructure_mode="uniform",
-                          parse_dos=True, parse_eigenvalues=True, **vasptodb_kwargs))
-        super(PBEcDFTStaticFW, self).__init__(t, parents=parents, name=fw_name, **kwargs)
 
 
 class PBEDefectWF:
@@ -1886,46 +1699,48 @@ class Sandwich:
         self.structure = structure
 
     def wf(self):
-        # lpad = LaunchPad.from_file("/home/tug03990/config/my_launchpad.efrc.yaml")
-        lpad = LaunchPad.auto_load()
+        lpad = LaunchPad.from_file("/home/tug03990/config/project/antisiteQubit/sandwich_Ws/my_launchpad.yaml")
+        # lpad = LaunchPad.auto_load()
         opt = OptimizeFW(self.structure, name="optPBE-vdw_relax")
         scf = StaticFW(
             self.structure,
             vasptodb_kwargs=dict(parse_dos=True, parse_eigenvalues=True,
                                  additional_fields={"charge_state":0, "NN": [62,66,58,72]}),
-            name="HSE_scf",
-            parents=opt
+            name="HSE_scf"
+            # parents=opt
         )
-        vis_kpt = MPRelaxSet(self.structure, vdw="optPBE", force_gamma=True).kpoints.as_dict()
+        # vis_kpt = MPRelaxSet(self.structure, vdw="optPBE", force_gamma=True).kpoints.as_dict()
+        vis_kpt = Kpoints.gamma_automatic((2,2,1)).as_dict()
         vis_kpt.pop('@module')
         vis_kpt.pop('@class')
-        fws = [opt, scf]
-        wf = Workflow(fws, name="optPBE-vdw")
-        wf = add_modify_incar(
-            wf,
-            {
-                "incar_update":{
-                    'LUSE_VDW': True,
-                    'AGGAC': 0.0,
-                    'GGA': 'Or',
-                    "ISMEAR":0,
-                    "SIGMA":0.05,
-                    "LASPH":True
-                }
-            },
-            "relax"
-        )
-
-        wf = add_modify_incar(wf, {"incar_update":{"NCORE":4,
-                                                   "EDIFF":1E-4,
-                                                   "EDIFFG":-0.02,
-                                                   "ENCUT":520,
-                                                   "LCHARG":False,
-                                                   "LWAVE":False
-                                                   }}, "relax")
+        # fws = [opt, scf]
+        fws = [scf]
+        wf = Workflow(fws, name="{}:optPBE-vdw".format(self.structure.formula))
+        # wf = add_modify_incar(
+        #     wf,
+        #     {
+        #         "incar_update":{
+        #             'LUSE_VDW': True,
+        #             'AGGAC': 0.0,
+        #             'GGA': 'Or',
+        #             "ISMEAR":0,
+        #             "SIGMA":0.05,
+        #             "LASPH":True
+        #         }
+        #     },
+        #     "relax"
+        # )
+        #
+        # wf = add_modify_incar(wf, {"incar_update":{"NCORE":4,
+        #                                            "EDIFF":1E-4,
+        #                                            "EDIFFG":-0.02,
+        #                                            "ENCUT":520,
+        #                                            "LCHARG":False,
+        #                                            "LWAVE":False
+        #                                            }}, "relax")
 
         hse_scf_incar = MPHSEBSSet(self.structure).incar
-        hse_scf_incar.update({"NCORE":4,
+        hse_scf_incar.update({
                               "EDIFF":1E-5,
                               "ENCUT":520,
                               "EMAX":10,
@@ -1937,10 +1752,10 @@ class Sandwich:
                               "SIGMA":0.05,
                               "LASPH":True
                               })
-
-        wf = add_modify_incar(wf, {"incar_update": hse_scf_incar}, "hse gap")
+        wf = add_modify_incar(wf)
+        wf = add_modify_incar(wf, {"incar_update": hse_scf_incar})
         wf = add_modify_kpoints(wf, {"kpoints_update":vis_kpt})
-        wf = set_execution_options(wf, category="sandwich_BN_mx2")
+        wf = set_execution_options(wf, category="sandwich_Ws")
         lpad.add_wf(wf)
 
 class Cluster:
@@ -1991,10 +1806,11 @@ if __name__ == '__main__':
     # bn = PBEDefectWF()
     # bn.bn_sub_wf([30])
     # ZPLWF.wfs()
-    DefectWF.wfs()
+    # DefectWF.wfs()
     # SPWflows.MX2_bandgap_hse()
-    # Sandwich(Structure.from_file("/home/tug03990/work/"
-    #                              "sandwich_BN_mx2/structures/W_S_hetero.vasp")).wf()
+    Sandwich(Structure.from_file('/gpfs/work/tug03990/'
+                                 'sandwich_BN_mx2/block_2020-07-09-03-07-03-645928/'
+                                 'launcher_2020-07-22-03-02-48-675084/CONTCAR.relax2.gz')).wf()
     # for i in glob("/home/tug03990/work/cluster/raw_st/*"):
     #     Cluster(Structure.from_file(i)).wf()
 
