@@ -1,0 +1,11 @@
+{
+    "host": "mongodb07.nersc.gov",
+    "port": 27017,
+    "database": "2DmaterialQuantumComputing",
+    "collection": "c2db",
+    "admin_user": "2DmaterialQuantumComputing_admin",
+    "admin_password": "tsaie79",
+    "readonly_user": "2DmaterialQuantumComputing_ro",
+    "readonly_password": "tsaie79",
+    "aliases": {}
+}
