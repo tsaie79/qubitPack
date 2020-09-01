@@ -1,0 +1,12 @@
+{
+    "admin_password": "qimin",
+    "admin_user": "Jeng",
+    "aliases": {},
+    "collection": "formation_energy",
+    "database": "owls",
+    "host": "localhost",
+    "port": 1234,
+    "readonly_password": "qiminyan",
+    "readonly_user": "readUser"
+}
+
