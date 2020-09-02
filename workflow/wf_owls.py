@@ -11,9 +11,11 @@ from atomate.vasp.firetasks.run_calc import RunVaspCustodian
 from atomate.common.firetasks.glue_tasks import PassCalcLocs
 from atomate.vasp.fireworks.core import OptimizeFW, StaticFW, ScanOptimizeFW
 from atomate.vasp.fireworks.jcustom import *
+from atomate.vasp.workflows.jcustom.hse_full import get_wf_full_hse
 from atomate.vasp.config import HALF_KPOINTS_FIRST_RELAX, RELAX_MAX_FORCE, VASP_CMD, DB_FILE
 from atomate.vasp.database import VaspCalcDb
 from atomate.vasp.workflows.presets.core import wf_static, wf_structure_optimization
+
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Structure, Kpoints, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
@@ -31,6 +33,10 @@ import numpy as np
 from monty.serialization import loadfn, dumpfn
 from unfold import find_K_from_k
 import math
+from workflow.tool_box import *
+
+
+
 
 
 class PBEDefectWF:
@@ -87,13 +93,6 @@ class PBEDefectWF:
         st = Structure.from_file("/gpfs/work/tug03990/2D_formation_energy_corr/host/POSCAR")
         chg = ChargedDefectsStructures(st, substitutions={"N": "C"}, cellmax=9*9*2)
 
-        def modify_vacuum(orig_st, vacuum):
-            ase_atom_obj = AseAtomsAdaptor.get_atoms(orig_st)
-            if vacuum < orig_st.lattice.c:
-                print("Set Vacuum < original lattice!!")
-            ase_atom_obj.center(vacuum=vacuum / 2, axis=2)
-            return AseAtomsAdaptor.get_structure(ase_atom_obj)
-
         for lz in lzs:
             bulk = chg.get_ith_supercell_of_defect_type(0, "bulk")
             bulk = modify_vacuum(bulk, lz)
@@ -107,282 +106,23 @@ class PBEDefectWF:
 
 
 class DefectWF:
-    @classmethod
-    def _defect_from_primitive_cell(cls, orig_st, antisite, bulk, type_vac, natom, substitution=None, distort=0.002):
-        defects = ChargedDefectsStructures(orig_st, cellmax=natom, antisites_flag=True).defects
-        if bulk:
-            bulk_structure = ChargedDefectsStructures(orig_st, cellmax=natom).get_ith_supercell_of_defect_type(0, "bulk")
-            return bulk_structure, None, None, natom, None, None
 
-        # find NN in defect structure
-        def find_nn(defect, antisite):
-            if antisite:
-                defect_st = defect["substitutions"][type_vac]["supercell"]["structure"]
-                defect_site_in_bulk = defect["substitutions"][type_vac]["bulk_supercell_site"]
-                supercell_size = defect["substitutions"][type_vac]["supercell"]["size"]
-                defect_site_in_bulk_index = defect_st.index(defect_site_in_bulk)
-                NN = [defect_st.index(defect_st[nn['site_index']])
-                      for nn in CrystalNN().get_nn_info(defect_st, defect_site_in_bulk_index)]
-                bond_length = [defect_st.get_distance(defect_site_in_bulk_index, NN_index) for NN_index in NN]
-                NN = dict(zip(NN, bond_length))
-                print("=="*50, "\nBefore distortion: {}".format(NN))
-                return defect_st, type_vac, NN, supercell_size, defect_site_in_bulk_index, defect_site_in_bulk
-            else:
-                defect_st = defect["vacancies"][type_vac]["supercell"]["structure"]
-                defect_site_in_bulk = defect["vacancies"][type_vac]["bulk_supercell_site"]
-                supercell_size = defect["vacancies"][type_vac]["supercell"]["size"]
-                bulk_st = defect["bulk"]["supercell"]["structure"]
-                print(defect_site_in_bulk, defect_site_in_bulk.to_unit_cell())
-                print(supercell_size)
-                try:
-                    defect_site_in_bulk_index = bulk_st.index(defect_site_in_bulk)
-                except ValueError:
-                    defect_site_in_bulk_index = bulk_st.index(defect_site_in_bulk.to_unit_cell())
-                NN = [defect_st.index(bulk_st[nn['site_index']])
-                      for nn in CrystalNN().get_nn_info(bulk_st, defect_site_in_bulk_index)]
-                bond_length = [bulk_st.get_distance(defect_site_in_bulk_index, NN_index) for NN_index in NN]
-                NN = dict(zip(NN, bond_length))
-                print("=="*50, "\nBefore distortion: {}".format(NN))
-                return defect_st, type_vac, NN, supercell_size, defect_site_in_bulk_index, defect_site_in_bulk
-
-        defect_st, type_vac, NN, supercell_size, defect_site_in_bulk_index, defect_site_in_bulk = \
-            find_nn(defect=defects, antisite=antisite)
-
-        # Move ions around the vacancy randomly
-        def get_rand_vec(distance): #was 0.001
-            # deals with zero vectors.
-            vector = np.random.randn(3)
-            vnorm = np.linalg.norm(vector)
-            return vector / vnorm * distance if vnorm != 0 else get_rand_vec(distance)
-
-        # add defect into NN for DOS
-        # for site in NN.keys():
-        #     defect_st.translate_sites(site, get_rand_vec(distort))
-        defect_st.translate_sites(defect_site_in_bulk_index, get_rand_vec(distort))
-        NN[defect_site_in_bulk_index] = 0
-        bond_length = [defect_st.get_distance(defect_site_in_bulk_index, NN_index) for NN_index in NN]
-        NN = dict(zip(NN, bond_length))
-        print("After distortion: {}\n".format(NN), "==" * 50)
-
-
-        # To make a substitution to a NN among given element (default None)
-        if substitution:
-            defect_st.replace(list(NN.keys())[0], substitution)
-
-        NN = [defect_st.get_sorted_structure().index(defect_st[nn]) for nn in list(NN.keys())]
-        print("Nearest neighbors = %s" % NN)
-        # static_set.write_input(".")
-        return defect_st.get_sorted_structure(), type_vac, NN, supercell_size, defect_site_in_bulk_index, \
-               defect_site_in_bulk
-
-    def __init__(self, primitive_structure, natom, type_vac, substitution, antisite, vacuum_thickness=None, bulk=False,
-                 distort=0):
-        self.distort = distort
-        self.type_vac = type_vac
-        self.bulk = bulk
-        self.antisite = antisite
+    def __init__(self, orig_st, natom, defect_type, substitution, distort=0, vacuum_thickness=None):
         self.lpad = LaunchPad.auto_load()
-        if vacuum_thickness:
-            def modify_vacuum(orig_st, vacuum):
-                if vacuum < orig_st.lattice.c:
-                    print("Please Set Vacuum > original lattice!!")
-                ase_offset = AseAtomsAdaptor.get_atoms(orig_st)
-                ase_offset.center(vacuum=0.0, axis=2)
-                try:
-                    offset = AseAtomsAdaptor.get_structure(ase_offset).lattice.c
-                except Exception as err:
-                    print(err)
-                    offset = 0
-                ase_atom_obj = AseAtomsAdaptor.get_atoms(orig_st)
-                ase_atom_obj.center(vacuum=(vacuum-offset)/2, axis=2)
-                return AseAtomsAdaptor.get_structure(ase_atom_obj)
-            self.primitive_structure = modify_vacuum(primitive_structure, vacuum_thickness)
-        else:
-            self.primitive_structure = primitive_structure
-        self.defect_st, self.type_vac, self.NN, self.supercell_size, self.defect_site_in_bulk_index, \
-        self.defect_site_in_bulk = DefectWF._defect_from_primitive_cell(
-            orig_st=self.primitive_structure,
-            antisite=self.antisite,
-            bulk=self.bulk,
-            type_vac=self.type_vac,
+        self.orig_st = orig_st
+        self.distort = distort
+        self.defect_st, self.defect_entry, self.NN, self.defect_site_in_bulk_index = defect_from_primitive_cell(
+            orig_st=self.orig_st,
+            defect_type=defect_type,
             natom=natom,
             substitution=substitution,
-            distort=self.distort
+            distort=self.distort,
+            vacuum_thickness=vacuum_thickness
         )
-
-    def hse_scf_wf(self, charge_states, gamma_only, dos_hse, defect_type, task_info, nupdown_set, encut=520,
-                   include_hse_relax=False):
-        fws = []
-        for cs, nupdown in zip(charge_states, nupdown_set):
-            print("Formula: {}".format(self.defect_st.formula))
-            structure = self.defect_st
-            if structure.site_properties.get("magmom", None):
-                structure.remove_site_property("magmom")
-            nelect = MPRelaxSet(structure).nelect - cs
-            vasptodb_kwargs = {"additional_fields": {"charge_state": cs}}
-            vasptodb_kwargs["additional_fields"].update({"nupdown_set": nupdown, "NN": self.NN})
-            user_incar_settings = {
-                "NELM": 150,
-                "ENCUT": encut,
-                "ISIF": 2,
-                "ISMEAR": 0,
-                "EDIFFG": -0.01,
-                "EDIFF": 1E-4,
-                "NELMIN": 6,
-                "LWAVE": False,
-                "LCHARG": False,
-                "ISPIN": 2,
-                "NUPDOWN": nupdown,
-                "LASPH":True
-                #"NCORE": 4 owls normal 14; cori 8. Reduce ncore if want to increase speed but low memory risk
-            }
-
-            user_incar_settings.update({"NELECT": nelect})
-
-            if gamma_only is True:
-                # user_kpoints_settings = Kpoints.gamma_automatic((1,1,1), (0.333, 0.333, 0))
-                user_kpoints_settings = Kpoints.gamma_automatic()
-                kpoint_setting = "G"
-            else:
-                nkpoints = len(gamma_only)
-                kpts_weights = [1.0 for i in np.arange(nkpoints)]
-                labels = [None for i in np.arange(nkpoints)]
-                user_kpoints_settings = Kpoints.from_dict(
-                    {
-                    'comment': 'Automatic kpoint scheme',
-                    'nkpoints': nkpoints,
-                    'generation_style': 'Reciprocal',
-                    'kpoints': gamma_only,
-                    'usershift': (0, 0, 0),
-                    'kpts_weights': kpts_weights,
-                    'coord_type': None,
-                    'labels': labels,
-                    'tet_number': 0,
-                    'tet_weight': 0,
-                    'tet_connections': None,
-                    '@module': 'pymatgen.io.vasp.inputs',
-                    '@class': 'Kpoints'
-                    }
-                )
-                kpoint_setting = "k"
-
-            # input set for relaxation
-            vis_relax = MPRelaxSet(structure, force_gamma=True)
-            if user_kpoints_settings:
-                v = vis_relax.as_dict()
-                v.update({"user_incar_settings": user_incar_settings, "user_kpoints_settings": user_kpoints_settings})
-                vis_relax = vis_relax.__class__.from_dict(v)
-
-            # FW1 Structure optimization firework
-            opt = OptimizeFW(
-                structure=structure,
-                vasp_input_set=vis_relax,
-                db_file=DB_FILE if DB_FILE else '>>db_file<<',
-                name="PBE_relax",
-                max_force_threshold=False,
-                job_type="normal"
-            )
-
-            # FW 1.5 Run HSE relax
-            hse_relax = HSERelaxFW(
-                structure=structure,
-                vasp_input_set_params={
-                    "user_incar_settings": user_incar_settings,
-                    "user_kpoints_settings": user_kpoints_settings
-                },
-                name="HSE_relax",
-                vasptodb_kwargs={"additional_fields": {"task_type": "HSERelaxFW",
-                                                       "defect_type": defect_type,
-                                                       "charge_state": cs,
-                                                       "nupdown_set": nupdown,
-                                                       "NN": self.NN
-                                                       }},
-                parents=opt
-            )
-
-            # FW2 Run HSE SCF
-            uis_hse_scf = {
-                "user_incar_settings": {
-                    "LEPSILON": False,
-                    "LVHAR": True,
-                    # "AMIX": 0.2,
-                    # "AMIX_MAG": 0.8,
-                    # "BMIX": 0.0001,
-                    # "BMIX_MAG": 0.0001,
-                    "EDIFF": 1.e-05,
-                    "ENCUT": encut,
-                    "ISMEAR": 0,
-                    "ICHARG": 1,
-                    "LWAVE": False,
-                    "LCHARG": False,
-                    "NSW": 0,
-                    "NUPDOWN": nupdown,
-                    "NELM": 150,
-                    "LASPH":True
-                    #"NCORE": 4
-                },
-                "user_kpoints_settings": user_kpoints_settings
-            }
-
-            if dos_hse:
-                uis_hse_scf["user_incar_settings"].update({"ENMAX": 10, "ENMIN": -10, "NEDOS": 9000})
-
-            uis_hse_scf["user_incar_settings"].update({"NELECT": nelect})
-
-            if include_hse_relax:
-                parent_hse_scf = hse_relax
-            else:
-                parent_hse_scf = opt
-            scf = HSEStaticFW(structure,
-                              vasp_input_set_params=uis_hse_scf,
-                              parents=parent_hse_scf,
-                              name="HSE_scf",
-                              vasptodb_kwargs={"additional_fields": {"task_type": "HSEStaticFW",
-                                                                     "defect_type": defect_type,
-                                                                     "charge_state": cs,
-                                                                     "nupdown_set": nupdown,
-                                                                     "NN": self.NN
-                                                                     }})
-            fws.append(opt)
-            if include_hse_relax:
-                fws.append(hse_relax)
-            fws.append(scf)
-        wf_name = "{}:{}:q{}:sp{}".format(self.defect_st.composition.reduced_formula, task_info,
-                                            charge_states, nupdown_set)
-        wf = Workflow(fws, name=wf_name)
-        wf = add_additional_fields_to_taskdocs(wf, {"NN": self.NN, "wf": [fw.name for fw in wf.fws]})
-        wf = add_namefile(wf)
-        wf = add_modify_incar(wf)
-        magmom = MPRelaxSet(self.defect_st).incar.get("MAGMOM", None)
-        wf = add_modify_incar(wf, {"incar_update": {"MAGMOM": magmom}})
-        return wf
 
     @classmethod
     def wfs(cls):
-        def _find_cation_anion(mx2):
-            cation, anion = None, None
-            for idx, el in enumerate(list(dict.fromkeys(mx2.species))):
-                if el.is_metal:
-                    cation = list(dict.fromkeys(mx2.species))[idx].name
-                else:
-                    anion = list(dict.fromkeys(mx2.species))[idx].name
-            return cation, anion
-
         def relax_pc():
-            def modify_vacuum(orig_st, vacuum):
-                if vacuum < orig_st.lattice.c:
-                    print("Please Set Vacuum > original lattice!!")
-                ase_offset = AseAtomsAdaptor.get_atoms(orig_st)
-                ase_offset.center(vacuum=0.0, axis=2)
-                try:
-                    offset = AseAtomsAdaptor.get_structure(ase_offset).lattice.c
-                except Exception as err:
-                    print(err)
-                    offset = 0
-                ase_atom_obj = AseAtomsAdaptor.get_atoms(orig_st)
-                ase_atom_obj.center(vacuum=(vacuum-offset)/2, axis=2)
-                return AseAtomsAdaptor.get_structure(ase_atom_obj)
-
             # lpad = LaunchPad.from_file("/home/tug03990/config/my_launchpad.efrc.yaml")
             lpad = LaunchPad.from_file("/home/tug03990/config/project/antisiteQubit/scan_opt_test/my_launchpad.yaml")
             col = VaspCalcDb.from_db_file("/home/tug03990/PycharmProjects/my_pycharm_projects/database/db_config/"
@@ -439,38 +179,7 @@ class DefectWF:
                 lpad.add_wf(wf)
 
 
-
         def MX2_anion_antisite(cat="MxC3vToChDeltaE"):
-            def special_treatment_to_structure(st, option, tgt_st=None, mv=None, nn=None):
-                # mv antisite in z
-                if option == "mv_z":
-                    # mv_z = -0.5 #Te
-                    # mv_z = 0.2 #Se
-                    # mv_z = 0.286 #S
-                    st.translate_sites(nn[-1], [0, 0, mv], frac_coords=False)
-                    return st
-
-                # selective dynamics
-                elif option == "selective_dynamics":
-                    where = []
-                    print(nn)
-                    for i in range(len(st.sites)):
-                        if i in nn:
-                            where.append([True, True, True])
-                        else:
-                            where.append([False, False, False])
-                    poscar = Poscar(st)
-                    poscar.selective_dynamics = where
-                    st = poscar.structure
-                    return st
-
-                elif option == "modify_lattice":
-                    tgt_lattice = tgt_st.lattice
-                    print(tgt_lattice)
-                    print(st.lattice)
-                    st.modify_lattice(tgt_lattice)
-                    print(st.lattice)
-                    return st
             # lpad = LaunchPad.auto_load()
             lpad = LaunchPad.from_file("/home/tug03990/config/project/antisiteQubit/MxC3vToChDeltaE/my_launchpad.yaml")
             col = VaspCalcDb.from_db_file("/home/tug03990/PycharmProjects/my_pycharm_projects/database/db_config/"
@@ -494,30 +203,41 @@ class DefectWF:
                 #     pc = special_treatment_to_structure(pc, "selective_dynamics", nn=[74, 55, 49, 54])
                 # else:
                 #     pc = special_treatment_to_structure(pc, "selective_dynamics", nn=[0, 6, 5, 25])
-
                 defect = ChargedDefectsStructures(pc, antisites_flag=True).defects
-                cation, anion = _find_cation_anion(pc)
+                cation, anion = find_cation_anion(pc)
 
-                for antisite in range(len(defect["substitutions"])):
+                for sub in range(len(defect["substitutions"])):
                     print(cation, anion)
-                    if "{}_on_{}".format(cation, anion) not in defect["substitutions"][antisite]["name"]:
+                    # cation vacancy
+                    if "{}_on_{}".format(cation, anion) not in defect["substitutions"][sub]["name"]:
                         continue
                     for na, thicks in geo_spec.items():
                         for thick in thicks:
                             for dtort in [0, 0.001]:
-                                se_antisite = DefectWF(pc, natom=na, vacuum_thickness=thick, substitution=None,
-                                                       antisite=True, type_vac=antisite, bulk=False, distort=dtort)
+                                se_antisite = DefectWF(orig_st=pc,
+                                                       defect_type=("substitutions", sub),
+                                                       natom=na,
+                                                       vacuum_thickness=thick,
+                                                       substitution=None,
+                                                       distort=dtort)
                                 # # se_antisite.NN = [5, 6, 0, 25]
                                 # se_antisite.NN = [54, 49, 55, 74]
-                                # se_antisite.defect_st = special_treatment_to_structure(
-                                #     Structure.from_dict(mx2["output"]["structure"]), "mv_z", mv=dtort, nn=[se_antisite.NN[-1]])
-                                wf = se_antisite.hse_scf_wf(
-                                    charge_states=[0], gamma_only=True, dos_hse=True, nupdown_set=[2],
-                                    defect_type="Mx:C3vToCh:deltaE",
-                                    task_info="{}:{}".format(na, thick),
+                                # se_antisite.defect_st = move_site(Structure.from_dict(mx2["output"]["structure"]),
+                                #                                   tgt_sites_idx=[se_antisite.NN[-1]],
+                                #                                   displacement_vector=[0,0,dtort])
+                                wf = get_wf_full_hse(
+                                    structure=se_antisite.defect_st,
+                                    charge_states=[0],
+                                    gamma_only=True,
+                                    dos_hse=True,
+                                    nupdowns=[2],
                                     encut=320,
-                                    include_hse_relax=True
+                                    include_hse_relax=True,
+                                    vasptodb={"category": cat, "NN": se_antisite.NN,
+                                              "defect_entry": se_antisite.defect_entry},
+                                    wf_addition_name="{}:{}".format(na, thick)
                                 )
+
                                 def kpoints(kpts):
                                     kpoints_kwarg = {
                                         'comment': "mx2_antisite",
@@ -543,20 +263,9 @@ class DefectWF:
                                      "perturbed": se_antisite.distort}
                                 )
 
-                                wf = add_modify_incar(wf, {"incar_update":{"ISIF":2,
-                                                                           "NSW": 150,
-                                                                           "EDIFF":1E-4,
-                                                                           "EDIFFG":-0.01,
-                                                                           "LASPH": True,
-                                                                           "LWAVE":False, "LCHARG":False}}, "PBE_relax")
-                                wf = add_modify_incar(wf, {"incar_update":{"AEXX":aexx, "ISIF":2,
-                                                                           "NSW":150,
-                                                                           "EDIFF":1E-4,
-                                                                           "LASPH": True,
-                                                                           "EDIFFG":-0.01, "LWAVE":False}}, "HSE_relax")
-                                wf = add_modify_incar(wf, {"incar_update":{"LWAVE": True, "LCHARG":False,
-                                                                           "LASPH": True,
-                                                                           "AEXX":aexx}}, "HSE_scf")
+                                wf = add_modify_incar(wf, {"incar_update": {"NSW":150}}, "PBE_relax")
+                                wf = add_modify_incar(wf, {"incar_update": {"AEXX":aexx, "NSW":150}}, "HSE_relax")
+                                wf = add_modify_incar(wf, {"incar_update": {"LWAVE": True, "AEXX":aexx}}, "HSE_scf")
                                 wf = set_queue_options(wf, "24:00:00", fw_name_constraint="PBE_relax")
                                 wf = set_queue_options(wf, "24:00:00", fw_name_constraint="HSE_relax")
                                 wf = set_queue_options(wf, "24:00:00", fw_name_constraint="HSE_scf")
@@ -567,121 +276,97 @@ class DefectWF:
                                 lpad.add_wf(wf)
                     # break
 
-        def MX2_anion_vacancy():
-            def special_treatment_to_structure(st, option, tgt_st=None, mv=None, nn=None):
-                # mv antisite in z
-                if option == "mv_z":
-                    # mv_z = -0.5 #Te
-                    # mv_z = 0.2 #Se
-                    # mv_z = 0.286 #S
-                    st.translate_sites(nn[-1], [0, 0, mv], frac_coords=False)
-                    return st
 
-                # selective dynamics
-                elif option == "selective_dynamics":
-                    nn.pop(-1)
-                    where = []
-                    print(nn)
-                    for i in range(len(st.sites)):
-                        if i in nn:
-                            where.append([True, True, True])
-                        else:
-                            where.append([False, False, False])
-                    poscar = Poscar(st)
-                    poscar.selective_dynamics = where
-                    st = poscar.structure
-                    return st
+        def MX2_anion_vacancy(cat):
 
-                elif option == "modify_lattice":
-                    tgt_lattice = tgt_st.lattice
-                    print(tgt_lattice)
-                    print(st.lattice)
-                    st.modify_lattice(tgt_lattice)
-                    print(st.lattice)
-                    return st
-
-            lpad = LaunchPad.from_file("/home/tug03990/config/my_launchpad.efrc.yaml")
+            # lpad = LaunchPad.auto_load()
+            lpad = LaunchPad.from_file("/home/tug03990/config/project/antisiteQubit/MxC3vToChDeltaE/my_launchpad.yaml")
             col = VaspCalcDb.from_db_file("/home/tug03990/PycharmProjects/my_pycharm_projects/database/db_config/"
-                                          "db_dk_local.json").collection
+                                          "db_mx2_antisite_pc.json").collection
+            # mx2s = col.find({"task_id":{"$in":[3091, 3083, 3093, 3097, 3094, 3102]}})
+            # 3091: S-W, 3083: Se-W, 3093: Te-W, 3097:Mo-S, 3094: Mo-Se, 3102:Mo-Te
+            mx2s = col.find({"task_id":{"$in":[3091, 3083, 3093, 3097, 3094, 3102]}})
 
-            mx2s = col.find(
-                {"class": {"$in": ["TMDC-T", "TMDC-H", "TMDC-T'"]},
-                 "gap_hse": {"$gt": 1},
-                 "ehull": {"$lt": 0.3},
-                 "magstate": "NM",
-                 # "formula": {"$in":["WTe2"]}
-                 # "spacegroup": "P-6m2",
-                 # "formula": {"$in": ["MoS2", "MoSe2",  "MoTe2", "WS2", "WSe2", "WTe2"]}
-                 "formula": {"$in": ["MoTe2"]}
-                 }
-            )
-
-
+            # col = VaspCalcDb.from_db_file("/home/tug03990/config/category/mx2_antisite_basic_aexx0.25_final/db.json").collection
+            # # mx2s = col.find({"task_id":{"$in":[3281, 3282, 3291, 3285]}}) #3281, 3282, 3281, 3291, 3285
+            # mx2s = col.find({"task_id":{"$in":[3302]}})
+            # col = VaspCalcDb.from_db_file("/home/tug03990/config/category/mx2_antisite_basic/db.json").collection
+            # mx2s = col.find({"task_id":{"$in":[2365]}})
             # geo_spec = {5 * 5 * 3: [20, 30, 40], 6 * 6 * 3: [20, 30, 40]}
             geo_spec = {5 * 5 * 3: [20]}
-            aexx = 0.35
+            aexx = 0.25
             for mx2 in mx2s:
-                pc = Structure.from_dict(mx2["structure"])
-                defect = ChargedDefectsStructures(pc, antisites_flag=False).defects
-                cation, anion = _find_cation_anion(pc)
+                # pc = Structure.from_dict(mx2["structure"])
+                pc = Structure.from_dict(mx2["output"]["structure"])
+                # if "Te" in pc.formula:
+                #     pc = special_treatment_to_structure(pc, "selective_dynamics", nn=[74, 55, 49, 54])
+                # else:
+                #     pc = special_treatment_to_structure(pc, "selective_dynamics", nn=[0, 6, 5, 25])
 
-                for vac in range(len(defect["vacancies"])):
+                defect = ChargedDefectsStructures(pc, antisites_flag=True).defects
+                cation, anion = find_cation_anion(pc)
+
+                for vacancy in range(len(defect["vacancies"])):
                     print(cation, anion)
-                    if "{}".format(anion) not in defect["vacancies"][vac]["name"]:
+                    # cation vacancy
+                    if cation not in defect["vacancies"][vacancy]["name"]:
                         continue
                     for na, thicks in geo_spec.items():
                         for thick in thicks:
-                            se_antisite = DefectWF(pc, natom=na, vacuum_thickness=thick, substitution=None,
-                                                   antisite=False, type_vac=vac, bulk=False, distort=0.02)
-                            # se_antisite.defect_st = Structure.from_file(os.path.join("/gpfs/work/tug03990/mx2_antisite_basic/"
-                            #                                      "block_2020-05-28-17-35-55-920859/"
-                            #                                      "launcher_2020-05-28-17-35-58-858406", "CONTCAR.relax2.gz"))
-                            # st = special_treatment_to_structure(
-                            #     se_antisite.defect_st,
-                            #     "mv_z",
-                            #     nn=se_antisite.NN,
-                            #     mv=mv_z
-                            # )
-                            # se_antisite.defect_st = special_treatment_to_structure(st, "selective_dynamics",
-                            #                                                        nn=se_antisite.NN)
+                            for dtort in [0, 0.001]:
+                                se_antisite = DefectWF(pc, natom=na, vacuum_thickness=thick, substitution=None,
+                                                       antisite=False, type_vac=vacancy, bulk=False, distort=dtort)
 
-                            wf = se_antisite.hse_scf_wf(
-                                charge_states=[0,0], gamma_only=True, dos_hse=False, nupdown_set=[2,0],
-                                defect_type={"bulk": pc.composition, "c2db_uid": mx2["uid"]},
-                                task_info="{}:{}".format(na, thick),
-                                encut=320,
-                                include_hse_relax=True
-                            )
-                            kpoints_kwarg = {
-                                'comment': 'ws2',
-                                "style": "G",
-                                "num_kpts": 0,
-                                'kpts': [[2, 2, 1]],
-                                'kpts_weights': None,
-                                'kpts_shift': (0, 0, 0),
-                                'coord_type': None,
-                                'labels': None,
-                                'tet_number': 0,
-                                'tet_weight': 0,
-                                'tet_connections': None
-                            }
+                                wf = get_wf_full_hse(
+                                    structure=se_antisite.defect_st,
+                                    charge_states=[0],
+                                    gamma_only=True,
+                                    dos_hse=True,
+                                    nupdowns=[2],
+                                    encut=320,
+                                    include_hse_relax=True,
+                                    vasptodb={"category": cat, "NN": se_antisite.NN},
+                                    wf_addition_name="{}:{}".format(na, thick)
+                                )
 
-                            # wf = add_modify_kpoints(wf, {"kpoints_update": kpoints_kwarg})
-                            wf = add_additional_fields_to_taskdocs(
-                                wf,
-                                {"perturbed": se_antisite.distort, "wf":[fw.name for fw in wf.fws]}
-                            )
-                            wf = add_modify_incar(wf, {"incar_update":{"NCORE":4, "NSW":100}}, "PBE_relax")
-                            wf = add_modify_incar(wf, {"incar_update":{"NCORE":5, "AEXX":aexx}}, "HSE_relax")
-                            wf = add_modify_incar(wf, {"incar_update":{"NCORE":4, "LWAVE": True, "LCHARG":False,
-                                                                       "AEXX":aexx}}, "HSE_scf")
-                            wf = set_queue_options(wf, "02:00:00", fw_name_constraint="HSE_scf")
-                            wf = set_queue_options(wf, "10:00:00", fw_name_constraint="HSE_relax")
-                            wf = set_queue_options(wf, "02:00:00", fw_name_constraint="PBE_relax")
-                            # related to directory
-                            wf = set_execution_options(wf, category="mx2_anion_vacancy")
-                            wf.name = wf.name+":dx[{}]".format(se_antisite.distort)
-                            lpad.add_wf(wf)
+                                def kpoints(kpts):
+                                    kpoints_kwarg = {
+                                        'comment': "mx2_antisite",
+                                        "style": "G",
+                                        "num_kpts": 0,
+                                        'kpts': [kpts],
+                                        'kpts_weights': None,
+                                        'kpts_shift': (0, 0, 0),
+                                        'coord_type': None,
+                                        'labels': None,
+                                        'tet_number': 0,
+                                        'tet_weight': 0,
+                                        'tet_connections': None
+                                    }
+                                    return kpoints_kwarg
+
+                                wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "PBE_relax")
+                                wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "HSE_relax")
+                                wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "HSE_scf")
+                                wf = add_additional_fields_to_taskdocs(
+                                    wf,
+                                    {"lattice_constant": "HSE",
+                                     "perturbed": se_antisite.distort}
+                                )
+
+                                wf = add_modify_incar(wf, {"incar_update": {"NSW":150}}, "PBE_relax")
+                                wf = add_modify_incar(wf, {"incar_update": {"AEXX":aexx, "NSW":150}}, "HSE_relax")
+                                wf = add_modify_incar(wf, {"incar_update": {"LWAVE": True, "AEXX":aexx}}, "HSE_scf")
+                                wf = set_queue_options(wf, "24:00:00", fw_name_constraint="PBE_relax")
+                                wf = set_queue_options(wf, "24:00:00", fw_name_constraint="HSE_relax")
+                                wf = set_queue_options(wf, "24:00:00", fw_name_constraint="HSE_scf")
+                                # related to directory
+                                wf = set_execution_options(wf, category=cat)
+                                wf = preserve_fworker(wf)
+                                wf.name = wf.name+":dx[{}]".format(se_antisite.distort)
+                                lpad.add_wf(wf)
+                    # break
+
 
 
         def MX2_formation_energy(category="W_Te_Ef_gamma"):
@@ -699,7 +384,7 @@ class DefectWF:
                 # pc = Structure.from_dict(mx2["structure"])
                 pc = Structure.from_dict(mx2["output"]["structure"])
                 defect = ChargedDefectsStructures(pc, antisites_flag=True).defects
-                cation, anion = _find_cation_anion(pc)
+                cation, anion = find_cation_anion(pc)
 
                 for antisite in range(len(defect["substitutions"])):
                     print(cation, anion)
