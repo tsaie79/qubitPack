@@ -1491,11 +1491,11 @@ if __name__ == '__main__':
     # bn = PBEDefectWF()
     # bn.bn_sub_wf([30])
     # ZPLWF.wfs()
-    # DefectWF.wfs()
+    DefectWF.wfs()
     # SPWflows.MX2_bandgap_hse()
-    Sandwich(Structure.from_file('/gpfs/work/tug03990/'
-                                 'sandwich_BN_mx2/block_2020-07-09-03-07-03-645928/'
-                                 'launcher_2020-07-22-03-02-48-675084/CONTCAR.relax2.gz')).wf()
+    # Sandwich(Structure.from_file('/gpfs/work/tug03990/'
+    #                              'sandwich_BN_mx2/block_2020-07-09-03-07-03-645928/'
+    #                              'launcher_2020-07-22-03-02-48-675084/CONTCAR.relax2.gz')).wf()
     # for i in glob("/home/tug03990/work/cluster/raw_st/*"):
     #     Cluster(Structure.from_file(i)).wf()
 
