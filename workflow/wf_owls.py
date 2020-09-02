@@ -111,7 +111,7 @@ class DefectWF:
         self.lpad = LaunchPad.auto_load()
         self.orig_st = orig_st
         self.distort = distort
-        self.defect_st, self.defect_entry, self.NN, self.defect_site_in_bulk_index = defect_from_primitive_cell(
+        self.defect_st, self.NN, self.defect_entry, self.defect_site_in_bulk_index = defect_from_primitive_cell(
             orig_st=self.orig_st,
             defect_type=defect_type,
             natom=natom,

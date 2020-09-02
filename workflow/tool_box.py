@@ -74,14 +74,17 @@ def defect_from_primitive_cell(orig_st, defect_type, natom, substitution=None, d
 
     if defect_type[0] == "bulk":
         bulk_structure = defects[defect_type[0]]["supercell"]["structure"]
-        defect_entry = defects[defect_type[0]]["supercell"].pop("structure")
+        defect_entry = defects[defect_type[0]]
+        defect_entry["supercell"].pop("structure")
         return bulk_structure, None, defect_entry, None
 
     # find NN in defect structure
     def find_nn(defect=defects, defect_type=defect_type):
         defect_st = defect[defect_type[0]][defect_type[1]]["supercell"]["structure"].get_sorted_structure()
         defect_site_in_bulk = defect[defect_type[0]][defect_type[1]]["bulk_supercell_site"]
-        defect_entry = defect[defect_type[0]][defect_type[1]]["supercell"].pop("structure")
+        defect_entry = defect[defect_type[0]][defect_type[1]]
+        defect_entry["supercell"].pop("structure")
+        defect_entry["supercell"]["bulk"] = defects["bulk"]["supercell"]["structure"]
 
         if defect_type[0] == "substitutions":
             defect_site_in_bulk_index = defect_st.index(defect_site_in_bulk)
