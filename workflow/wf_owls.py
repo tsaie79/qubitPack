@@ -182,8 +182,7 @@ class DefectWF:
         def MX2_anion_antisite(cat="MxC3vToChDeltaE"):
             # lpad = LaunchPad.auto_load()
             lpad = LaunchPad.from_file("/home/tug03990/config/project/antisiteQubit/MxC3vToChDeltaE/my_launchpad.yaml")
-            col = VaspCalcDb.from_db_file("/home/tug03990/PycharmProjects/my_pycharm_projects/database/db_config/"
-                                          "db_mx2_antisite_pc.json").collection
+            col = VaspCalcDb.from_db_file("/home/tug03990/config/category/mx2_antisite_pc/db.json").collection
             # mx2s = col.find({"task_id":{"$in":[3091, 3083, 3093, 3097, 3094, 3102]}})
             # 3091: S-W, 3083: Se-W, 3093: Te-W, 3097:Mo-S, 3094: Mo-Se, 3102:Mo-Te
             mx2s = col.find({"task_id":{"$in":[3091, 3083, 3093, 3097, 3094, 3102]}})
@@ -194,7 +193,7 @@ class DefectWF:
             # col = VaspCalcDb.from_db_file("/home/tug03990/config/category/mx2_antisite_basic/db.json").collection
             # mx2s = col.find({"task_id":{"$in":[2365]}})
             # geo_spec = {5 * 5 * 3: [20, 30, 40], 6 * 6 * 3: [20, 30, 40]}
-            geo_spec = {5 * 5 * 3: [20]}
+            geo_spec = {5* 5 * 3: [15]}
             aexx = 0.25
             for mx2 in mx2s:
                 # pc = Structure.from_dict(mx2["structure"])
@@ -228,7 +227,7 @@ class DefectWF:
                                 wf = get_wf_full_hse(
                                     structure=se_antisite.defect_st,
                                     charge_states=[0],
-                                    gamma_only=True,
+                                    gamma_only=False,
                                     dos_hse=True,
                                     nupdowns=[2],
                                     encut=320,
@@ -254,9 +253,9 @@ class DefectWF:
                                     }
                                     return kpoints_kwarg
 
-                                wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "PBE_relax")
-                                wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "HSE_relax")
-                                wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "HSE_scf")
+                                # wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "PBE_relax")
+                                # wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "HSE_relax")
+                                # wf = add_modify_kpoints(wf, {"kpoints_update": kpoints([1,1,1])}, "HSE_scf")
                                 wf = add_additional_fields_to_taskdocs(
                                     wf,
                                     {"lattice_constant": "HSE",
