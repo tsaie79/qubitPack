@@ -70,18 +70,20 @@ def defect_from_primitive_cell(orig_st, defect_type, natom, substitution=None, d
         orig_st = orig_st
 
     defects = ChargedDefectsStructures(orig_st, cellmax=natom, antisites_flag=True).defects
+    bulk_st = defects["bulk"]["supercell"]["structure"]
+
+    if defect_type[0] == "bulk":
+        bulk_structure = defects[defect_type[0]]["supercell"]["structure"]
+        defect_entry = defects[defect_type[0]]["supercell"].pop("structure")
+        return bulk_structure, None, defect_entry, None
 
     # find NN in defect structure
     def find_nn(defect=defects, defect_type=defect_type):
         defect_st = defect[defect_type[0]][defect_type[1]]["supercell"]["structure"].get_sorted_structure()
         defect_site_in_bulk = defect[defect_type[0]][defect_type[1]]["bulk_supercell_site"]
-        defect_entry = defect[defect_type[0]][defect_type[1]].pop("supercell")
+        defect_entry = defect[defect_type[0]][defect_type[1]]["supercell"].pop("structure")
 
-        if defect_type[0] == "bulk":
-            bulk_structure = defects[defect_type[0]]["supercell"]["structure"]
-            return bulk_structure, None, defect_entry, None
-
-        elif defect_type[0] == "substitutions":
+        if defect_type[0] == "substitutions":
             defect_site_in_bulk_index = defect_st.index(defect_site_in_bulk)
             print(defect_site_in_bulk, defect_site_in_bulk.to_unit_cell())
             NN = [defect_st.index(defect_st[nn['site_index']])
@@ -110,7 +112,6 @@ def defect_from_primitive_cell(orig_st, defect_type, natom, substitution=None, d
 
     # Move ions around the vacancy randomly
     # add defect into NN for DOS
-    bulk_st = defects["bulk"]["supercell"]["structure"]
     for site in NN.keys():
         perturb = get_rand_vec(distort)
         defect_st.translate_sites(site, perturb)
