@@ -15,7 +15,7 @@ y|
 """
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from qc_searching.py_energy_diagram.application.box_notation import plot_orbital_boxes
+from qubitPack.qc_searching.py_energy_diagram.application.box_notation import plot_orbital_boxes
 
 
 class ED:

@@ -1,13 +1,12 @@
-from qc_searching.py_energy_diagram.application.energydiagram import ED
+from qubitPack.qc_searching.py_energy_diagram.application.energydiagram import ED
 
 
 class EnergyLevel(ED):
 
-    def __init__(self, up, down):
+    def __init__(self, levels):
         super().__init__(aspect='equal')
-        self.up = up
-        self.down = down
-
+        self.up = levels.get("1", {})
+        self.down = levels.get("-1", {})
     def plotting(self, cbm, vbm):
 
         for up, en in self.up.items():
@@ -18,6 +17,7 @@ class EnergyLevel(ED):
                 self.add_level(dn, None, occupied=en)
             else:
                 self.add_level(dn, None, "last", occupied=en)
+
 
         self.plot(show_IDs=True, cbm=cbm, vbm=vbm)
         my_fig = self.fig
