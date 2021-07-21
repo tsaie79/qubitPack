@@ -7,6 +7,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import numpy as np
 import os
+from collections import OrderedDict
 
 from monty.serialization import loadfn, dumpfn
 
