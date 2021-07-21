@@ -304,17 +304,7 @@ class GenDefect:
 
 
 def get_good_ir_sites(structure, symprec=1e-4):
-    space_sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
-
-    equivalent_atoms = list(space_sym_analyzer.get_symmetry_dataset()["equivalent_atoms"])
-    equivalent_atoms_index = OrderedDict((x, equivalent_atoms.index(x)) for x in equivalent_atoms).values()
-
-    site_syms = space_sym_analyzer.get_symmetry_dataset()["site_symmetry_symbols"]
-    site_syms = [site_syms[i] for i in equivalent_atoms_index]
-    vw = space_sym_analyzer.get_symmetry_dataset()["wyckoffs"]
-    vw = [vw[i] for i in equivalent_atoms_index]
-    species = structure.species
-    species = [species[i] for i in equivalent_atoms_index]
+    species, site_syms, vw = get_unique_sites_from_vw(structure, symprec).values()
 
     good_ir_species, good_ir_syms, good_ir_vw = [], [], []
     for specie, site_sym, vw in zip(species, site_syms, vw):
