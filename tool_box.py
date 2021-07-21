@@ -3,6 +3,7 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Poscar, Structure
 from pymatgen.analysis.local_env import CrystalNN
 from pymatgen.analysis.defects.core import Vacancy, Substitution
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import numpy as np
 import os
@@ -301,11 +302,21 @@ class GenDefect:
         self.nn_dist["before"] = dict(zip([str(idx) for idx in self.NN], self.nn_dist["before"].values()))
 
 
-def get_good_ir_sites(species, site_syms):
-    good_ir_species = []
-    good_ir_syms = []
-    for specie, site_sym in zip(species, site_syms):
-        print(site_sym)
+def get_good_ir_sites(structure, symprec=1e-4):
+    space_sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
+
+    equivalent_atoms = list(space_sym_analyzer.get_symmetry_dataset()["equivalent_atoms"])
+    equivalent_atoms_index = OrderedDict((x, equivalent_atoms.index(x)) for x in equivalent_atoms).values()
+
+    site_syms = space_sym_analyzer.get_symmetry_dataset()["site_symmetry_symbols"]
+    site_syms = [site_syms[i] for i in equivalent_atoms_index]
+    vw = space_sym_analyzer.get_symmetry_dataset()["wyckoffs"]
+    vw = [vw[i] for i in equivalent_atoms_index]
+    species = st.species
+    species = [species[i] for i in equivalent_atoms_index]
+
+    good_ir_species, good_ir_syms, good_ir_vw = [], [], []
+    for specie, site_sym, vw in zip(species, site_syms, vw):
         site_sym = [x for x in site_sym.split(".") if x][0]
         if site_sym == "-4m2":
             site_sym = "-42m"
@@ -316,13 +327,15 @@ def get_good_ir_sites(species, site_syms):
 
         irreps = character_table[site_sym][0]["character_table"]
         for irrep, char_vec in irreps.items():
-            print(char_vec)
             if char_vec[0] >= 2:
+                print(site_syms, vw, species)
                 good_ir_species.append((str(specie)))
                 good_ir_syms.append(site_sym)
+                good_ir_vw.append(vw)
                 break
 
-    return good_ir_species, good_ir_syms
+
+    return dict(zip(["specie", "symmetry", "vw"], [good_ir_species, good_ir_syms, good_ir_vw]))
 
 
 def get_interpolate_sts(i_st, f_st, disp_range=np.linspace(0, 2, 11), output_dir=None):
