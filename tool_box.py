@@ -313,7 +313,7 @@ def get_good_ir_sites(structure, symprec=1e-4):
     site_syms = [site_syms[i] for i in equivalent_atoms_index]
     vw = space_sym_analyzer.get_symmetry_dataset()["wyckoffs"]
     vw = [vw[i] for i in equivalent_atoms_index]
-    species = st.species
+    species = structure.species
     species = [species[i] for i in equivalent_atoms_index]
 
     good_ir_species, good_ir_syms, good_ir_vw = [], [], []
