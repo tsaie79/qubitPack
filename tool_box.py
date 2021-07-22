@@ -302,12 +302,28 @@ class GenDefect:
         self.NN = [self.defect_st.index(nn) for nn in defect_sites_in_bulk]
         self.nn_dist["before"] = dict(zip([str(idx) for idx in self.NN], self.nn_dist["before"].values()))
 
+def get_unique_sites_from_wy(structure, symprec=1e-4):
+    space_sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
+    point_gp = space_sym_analyzer.get_symmetry_dataset()["pointgroup"]
+
+    equivalent_atoms = list(space_sym_analyzer.get_symmetry_dataset()["equivalent_atoms"])
+    equivalent_atoms_index = list(OrderedDict((x, equivalent_atoms.index(x)) for x in equivalent_atoms).values())
+
+    site_syms = space_sym_analyzer.get_symmetry_dataset()["site_symmetry_symbols"]
+    site_syms = [site_syms[i] for i in equivalent_atoms_index]
+    wyckoffs = space_sym_analyzer.get_symmetry_dataset()["wyckoffs"]
+    wyckoffs = [wyckoffs[i] for i in equivalent_atoms_index]
+    species = structure.species
+    species = [species[i].name for i in equivalent_atoms_index]
+    print(species, site_syms, wyckoffs, point_gp)
+    return dict(zip(["species", "site_syms", "wys", "pg", "unique_site_idx"],
+                    [species, site_syms, wyckoffs, point_gp, equivalent_atoms_index]))
 
 def get_good_ir_sites(structure, symprec=1e-4):
-    species, site_syms, vw = get_unique_sites_from_vw(structure, symprec).values()
+    species, site_syms, wyckoffs, pg, site_idxs = get_unique_sites_from_wy(structure, symprec).values()
 
-    good_ir_species, good_ir_syms, good_ir_vw = [], [], []
-    for specie, site_sym, vw in zip(species, site_syms, vw):
+    good_ir_species, good_ir_syms, good_ir_wy, good_ir_site_idx = [], [], [], []
+    for specie, site_sym, wyckoffs, site_idx in zip(species, site_syms, wyckoffs, site_idxs):
         site_sym = [x for x in site_sym.split(".") if x][0]
         if site_sym == "-4m2":
             site_sym = "-42m"
@@ -319,27 +335,14 @@ def get_good_ir_sites(structure, symprec=1e-4):
         irreps = character_table[site_sym][0]["character_table"]
         for irrep, char_vec in irreps.items():
             if char_vec[0] >= 2:
-                print(site_syms, vw, species)
-                good_ir_species.append((str(specie)))
+                good_ir_species.append(specie)
                 good_ir_syms.append(site_sym)
-                good_ir_vw.append(vw)
+                good_ir_wy.append(wyckoffs)
+                good_ir_site_idx.append(site_idx)
                 break
-
-    return dict(zip(["specie", "symmetry", "vw"], [good_ir_species, good_ir_syms, good_ir_vw]))
-
-def get_unique_sites_from_vw(structure, symprec=1e-4):
-    space_sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
-
-    equivalent_atoms = list(space_sym_analyzer.get_symmetry_dataset()["equivalent_atoms"])
-    equivalent_atoms_index = OrderedDict((x, equivalent_atoms.index(x)) for x in equivalent_atoms).values()
-
-    site_syms = space_sym_analyzer.get_symmetry_dataset()["site_symmetry_symbols"]
-    site_syms = [site_syms[i] for i in equivalent_atoms_index]
-    vw = space_sym_analyzer.get_symmetry_dataset()["wyckoffs"]
-    vw = [vw[i] for i in equivalent_atoms_index]
-    species = structure.species
-    species = [species[i] for i in equivalent_atoms_index]
-    return dict(zip(["specie", "symmetry", "vw"], [species, site_syms, vw]))
+    print(good_ir_species, good_ir_syms, good_ir_wy, pg, good_ir_site_idx)
+    return dict(zip(["species", "site_syms", "wys", "pg", "site_idx"],
+                    [good_ir_species, good_ir_syms, good_ir_wy, pg, good_ir_site_idx]))
 
 def get_interpolate_sts(i_st, f_st, disp_range=np.linspace(0, 2, 11), output_dir=None):
     '''
@@ -516,3 +519,44 @@ def find_scaling_for_2d_defect(pc, min_lc=15):
     st.make_supercell(scaling)
     print("scaling matrix: {}".format(scaling))
     return scaling, st
+
+
+def get_band_edges_characters(bs):
+        cbm = bs.get_cbm()
+        vbm = bs.get_vbm()
+        data = {}
+        for name, band_edge in zip(["vbm", "cbm"], [vbm, cbm]):
+            band_index = band_edge["band_index"]
+            if band_index.get(Spin.up) != band_index.get(Spin.down):
+                data.update({"{}_is_band_index_equal".format(name): False})
+            else:
+                data.update({"{}_is_band_index_equal".format(name): True})
+
+            projections = band_edge["projections"]
+            for spin, band_idx in band_index.items():
+                if band_idx:
+                    tot_proj_on_element = projections[spin].sum(axis=0)
+                    max_tot_proj_element_idx = tot_proj_on_element.argmax()
+                    max_tot_proj = tot_proj_on_element[max_tot_proj_element_idx]
+
+                    # tot_proj_on_element_dn = projections[Spin.down].sum(axis=0)
+                    # max_tot_proj_element_idx_dn = tot_proj_on_element_dn.argmax()
+                    # max_tot_proj_dn = tot_proj_on_element_dn[max_tot_proj_element_idx_dn]
+                    data.update(
+                        {
+                            "{}_max_tot_proj_element_idx_{}".format(name, spin.name): max_tot_proj_element_idx,
+                            "{}_max_tot_proj_element_{}".format(name, spin.name): bs.structure[max_tot_proj_element_idx].species_string,
+                            "{}_max_tot_proj_{}".format(name, spin.name): max_tot_proj,
+                            "{}_tot_proj_on_element_{}".format(name, spin.name): tot_proj_on_element,
+                        }
+                    )
+        print(data)
+        for spin_vbm in [Spin.up.name, Spin.down.name]:
+            for spin_cbm in [Spin.up.name, Spin.down.name]:
+                if data.get("vbm_max_tot_proj_element_idx_{}".format(spin_vbm), "Yes") == \
+                        data.get("cbm_max_tot_proj_element_idx_{}".format(spin_cbm), "No"):
+                    data["is_vbm_cbm_from_same_element"] = True
+                else:
+                    data["is_vbm_cbm_from_same_element"] = False
+
+        return data
