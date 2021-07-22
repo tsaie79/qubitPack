@@ -1,4 +1,6 @@
 import shutil
+
+from pymatgen import Spin
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Poscar, Structure
 from pymatgen.analysis.local_env import CrystalNN
@@ -556,6 +558,7 @@ def get_band_edges_characters(bs):
                 if data.get("vbm_max_tot_proj_element_idx_{}".format(spin_vbm), "Yes") == \
                         data.get("cbm_max_tot_proj_element_idx_{}".format(spin_cbm), "No"):
                     data["is_vbm_cbm_from_same_element"] = True
+                    break
                 else:
                     data["is_vbm_cbm_from_same_element"] = False
 
