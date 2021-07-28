@@ -9,7 +9,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 import numpy as np
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from monty.serialization import loadfn, dumpfn
 
@@ -306,6 +306,8 @@ class GenDefect:
 
 def get_unique_sites_from_wy(structure, symprec=1e-4):
     space_sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
+    space_group = space_sym_analyzer.get_symmetry_dataset()["international"]
+    space_group_number = space_sym_analyzer.get_symmetry_dataset()["number"]
     point_gp = space_sym_analyzer.get_symmetry_dataset()["pointgroup"]
 
     equivalent_atoms = list(space_sym_analyzer.get_symmetry_dataset()["equivalent_atoms"])
@@ -318,11 +320,11 @@ def get_unique_sites_from_wy(structure, symprec=1e-4):
     species = structure.species
     species = [species[i].name for i in equivalent_atoms_index]
     print(species, site_syms, wyckoffs, point_gp)
-    return dict(zip(["species", "site_syms", "wys", "pg", "unique_site_idx"],
-                    [species, site_syms, wyckoffs, point_gp, equivalent_atoms_index]))
+    return dict(zip(["species", "site_syms", "wys", "pg", "unique_site_idx", "spg", "spg_number"],
+                    [species, site_syms, wyckoffs, point_gp, equivalent_atoms_index, space_group, space_group_number]))
 
 def get_good_ir_sites(structure, symprec=1e-4):
-    species, site_syms, wyckoffs, pg, site_idxs = get_unique_sites_from_wy(structure, symprec).values()
+    species, site_syms, wyckoffs, pg, site_idxs, spg, spg_number = get_unique_sites_from_wy(structure, symprec).values()
 
     good_ir_species, good_ir_syms, good_ir_wy, good_ir_site_idx = [], [], [], []
     for specie, site_sym, wyckoffs, site_idx in zip(species, site_syms, wyckoffs, site_idxs):
@@ -343,8 +345,8 @@ def get_good_ir_sites(structure, symprec=1e-4):
                 good_ir_site_idx.append(site_idx)
                 break
     print(good_ir_species, good_ir_syms, good_ir_wy, pg, good_ir_site_idx)
-    return dict(zip(["species", "site_syms", "wys", "pg", "site_idx"],
-                    [good_ir_species, good_ir_syms, good_ir_wy, pg, good_ir_site_idx]))
+    return dict(zip(["species", "site_syms", "wys", "pg", "site_idx", "spg", "spg_number"],
+                    [good_ir_species, good_ir_syms, good_ir_wy, pg, good_ir_site_idx, spg, spg_number]))
 
 def get_interpolate_sts(i_st, f_st, disp_range=np.linspace(0, 2, 11), output_dir=None):
     '''
@@ -527,12 +529,14 @@ def get_band_edges_characters(bs):
         cbm = bs.get_cbm()
         vbm = bs.get_vbm()
         data = {}
+        data["cbm"] = {"up": {}, "down": {}}
+        data["vbm"] = {"up": {}, "down": {}}
         for name, band_edge in zip(["vbm", "cbm"], [vbm, cbm]):
             band_index = band_edge["band_index"]
             if band_index.get(Spin.up) != band_index.get(Spin.down):
-                data.update({"{}_is_band_index_equal".format(name): False})
+                data[name].update({"is_up_dn_band_idx_equal": False})
             else:
-                data.update({"{}_is_band_index_equal".format(name): True})
+                data[name].update({"is_up_dn_band_idx_equal": True})
 
             projections = band_edge["projections"]
             for spin, band_idx in band_index.items():
@@ -541,22 +545,19 @@ def get_band_edges_characters(bs):
                     max_tot_proj_element_idx = tot_proj_on_element.argmax()
                     max_tot_proj = tot_proj_on_element[max_tot_proj_element_idx]
 
-                    # tot_proj_on_element_dn = projections[Spin.down].sum(axis=0)
-                    # max_tot_proj_element_idx_dn = tot_proj_on_element_dn.argmax()
-                    # max_tot_proj_dn = tot_proj_on_element_dn[max_tot_proj_element_idx_dn]
-                    data.update(
+                    data[name][spin.name].update(
                         {
-                            "{}_max_tot_proj_element_idx_{}".format(name, spin.name): max_tot_proj_element_idx,
-                            "{}_max_tot_proj_element_{}".format(name, spin.name): bs.structure[max_tot_proj_element_idx].species_string,
-                            "{}_max_tot_proj_{}".format(name, spin.name): max_tot_proj,
-                            "{}_tot_proj_on_element_{}".format(name, spin.name): tot_proj_on_element,
+                            "max_element_idx": max_tot_proj_element_idx,
+                            "max_element": bs.structure[max_tot_proj_element_idx].species_string,
+                            "max_proj": max_tot_proj,
+                            "proj_on_element": tot_proj_on_element,
                         }
                     )
         print(data)
         for spin_vbm in [Spin.up.name, Spin.down.name]:
             for spin_cbm in [Spin.up.name, Spin.down.name]:
-                if data.get("vbm_max_tot_proj_element_idx_{}".format(spin_vbm), "Yes") == \
-                        data.get("cbm_max_tot_proj_element_idx_{}".format(spin_cbm), "No"):
+                if data["vbm"][spin_vbm].get("max_element_idx".format(spin_vbm), "Yes") == \
+                        data["cbm"][spin_cbm].get("max_element_idx".format(spin_cbm), "No"):
                     data["is_vbm_cbm_from_same_element"] = True
                     break
                 else:
