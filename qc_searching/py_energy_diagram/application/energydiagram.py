@@ -80,8 +80,8 @@ class ED:
             self.pos_number += 1
         elif position == 'last':
             position = self.pos_number
-        if top_text == 'Energy':
-            top_text = energy
+        # if top_text != "":
+        #     top_text = energy
         if left_text == "Energy":
             left_text = energy
 

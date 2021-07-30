@@ -3,27 +3,33 @@ from qubitPack.qc_searching.py_energy_diagram.application.energydiagram import E
 
 class EnergyLevel(ED):
 
-    def __init__(self, levels):
+    def __init__(self, levels, top_texts):
         super().__init__(aspect='equal')
         self.up = levels.get("1", {})
         self.down = levels.get("-1", {})
+        if not top_texts:
+            top_texts = {}
+        self.up_top_texts = top_texts.get("1", ["" for i in range(len(self.up))])
+        self.dn_top_texts = top_texts.get("-1", ["" for i in range(len(self.down))])
+        self.up_top_texts.extend(["" for i in range(len(self.up) - len(self.up_top_texts))])
+        self.dn_top_texts.extend(["" for i in range(len(self.down) - len(self.dn_top_texts))])
+        print(self.up_top_texts, self.dn_top_texts)
     def plotting(self, cbm, vbm):
+            for eig, occup, top_text in zip(self.up.keys(), self.up.values(), self.up_top_texts):
+                self.add_level(energy=eig, position="last", occupied=occup, top_text=top_text)
 
-        for up, en in self.up.items():
-            self.add_level(energy=up, position="last", occupied=en)
-
-        for dn, en in self.down.items():
-            if dn == list(self.down.keys())[0]:
-                self.add_level(dn, None, occupied=en)
-            else:
-                self.add_level(dn, None, "last", occupied=en)
+            for eig, occup, top_text in zip(self.down.keys(), self.down.values(), self.dn_top_texts):
+                if eig == list(self.down.keys())[0]:
+                    self.add_level(eig, None, occupied=occup, top_text=top_text)
+                else:
+                    self.add_level(eig, None, "last", occupied=occup, top_text=top_text)
 
 
-        self.plot(show_IDs=True, cbm=cbm, vbm=vbm)
-        my_fig = self.fig
-        my_fig.show()
+            self.plot(show_IDs=True, cbm=cbm, vbm=vbm)
+            my_fig = self.fig
+            my_fig.show()
 
-        return my_fig
+            return my_fig
 
 
 if __name__ == '__main__':

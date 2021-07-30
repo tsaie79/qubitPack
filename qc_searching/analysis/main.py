@@ -1,16 +1,85 @@
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DosPlotDB
 from qubitPack.qc_searching.analysis.read_eigen import DetermineDefectState
-import matplotlib.pyplot as plt
+from qubitPack.qc_searching.py_energy_diagram.application.defect_levels import EnergyLevel
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DB_CONFIG_PATH
+
+import matplotlib.pyplot as plt
 from glob import glob
 import os
 import pandas as pd
 import numpy as np
 from collections import Counter
 
+def get_eigen_plot(tot, determine_defect_state_obj, top_texts):
+    levels = {"1": {}, "-1":{}}
+    for spin in ["1", "-1"]:
+        energy = tot.loc[tot["spin"]==spin]["energy"]
+        occup = []
+        for i in tot.loc[tot["spin"]==spin]["n_occ_e"]:
+            if i == 1:
+                occup.append(True)
+            else:
+                occup.append(False)
+        levels[spin].update(dict(zip(energy, occup)))
+    print(levels)
+    eng = EnergyLevel(levels, top_texts=top_texts)
+    fig = eng.plotting(
+        round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
+        round(determine_defect_state_obj.cbm + determine_defect_state_obj.vacuum_locpot, 3)
+    )
+
+    if determine_defect_state_obj.save_fig_path:
+        fig.savefig(os.path.join(determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
+            determine_defect_state_obj.entry["formula_pretty"],
+            determine_defect_state_obj.entry["task_id"],
+            determine_defect_state_obj.entry["task_label"])))
+
+def get_ir_info(tot, ir_db, ir_entry_filter):
+    # Locate idx in band_idex
+    ir_entry = ir_db.collection.find_one(ir_entry_filter)
+    input_sheet = tot["spin"]
+    bd_idx_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]#["up"]["band_index"]
+    band_id_list = []
+    band_idxs = input_sheet.index
+    for band_idx, spin in zip(tot.index+1, tot["spin"]):
+        spin = "up" if spin == 1 else "down"
+        bd_idx_sheet = bd_idx_dict[spin]["band_index"]
+        if band_idx in bd_idx_sheet:
+            band_id = bd_idx_sheet.index(band_idx)
+            band_id_list.append(band_id)
+        else:
+            for degeneracy in range(10):
+                if band_idx-degeneracy not in bd_idx_sheet:
+                    continue
+                else:
+                    band_id = bd_idx_sheet.index(band_idx-degeneracy)
+                    band_id_list.append(band_id)
+                    break
+
+    # Locate degeneracy from band_degeneracy
+    bd_degen_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]
+    band_degen_list = []
+    for band_id, spin in zip(band_id_list, tot["spin"]):
+        spin = "up" if spin == 1 else "down"
+        band_degen_list.append(bd_degen_dict[spin]["band_degeneracy"][band_id])
+
+    # Locate IR from irreducible_reps
+    bd_ir_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]
+    band_ir_list = []
+    for band_id, spin in zip(band_id_list, tot["spin"]):
+        spin = "up" if spin == 1 else "down"
+        band_ir_list.append(bd_ir_dict[spin]["irreducible_reps"][band_id].split(" ")[0])
+
+    # Integrate info into tot
+    ir_info_sheet = pd.DataFrame({"band_id": band_id_list,
+                                  "band_degeneracy": band_degen_list,
+                                  "band_ir": band_ir_list},
+                                 index=tot.index)
+    tot = pd.concat([tot, ir_info_sheet], axis=1)
+    return tot
 
 def get_defect_state(db, db_filter, cbm, vbm, path_save_fig, plot=True, clipboard="tot", locpot=None,
-                     threshold=0.1, locpot_c2db=None) -> object:
+                     threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, top_texts=None) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
     "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
@@ -25,6 +94,19 @@ def get_defect_state(db, db_filter, cbm, vbm, path_save_fig, plot=True, clipboar
         threshold=threshold,
         select_bands=None
     )
+    if ir_db and ir_entry_filter:
+        tot = get_ir_info(tot, ir_db, ir_entry_filter)
+        top_texts = {"1": [], "-1": []}
+        for spin in ["1", "-1"]:
+            ir_info = tot.loc[tot["spin"]==spin]
+            for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"], ir_info["band_degeneracy"], ir_info["band_ir"]):
+                info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+                top_texts[spin].append(info)
+            top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
+
+    print(top_texts)
+    get_eigen_plot(tot, can, top_texts)
+
     print("**"*20)
     print(d_df)
     e = {}
