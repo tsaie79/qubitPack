@@ -205,7 +205,7 @@ class ED:
         fig (plt.figure) and ax (fig.add_subplot())
 
         '''
-        fig = plt.figure()
+        fig = plt.figure(figsize=(8,6), dpi=300)
         ax = fig.add_subplot(111, aspect=self.aspect)
         ax.set_ylabel("Energy (eV)")
         ax.axes.get_xaxis().set_visible(False)
