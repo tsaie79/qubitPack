@@ -295,17 +295,6 @@ class DetermineDefectState:
                 print("Threshold of projection is too high!")
 
         print(levels)
-        # eng = EnergyLevel(levels)
-        # fig = eng.plotting(
-        #     round(self.vbm + self.vacuum_locpot, 3),
-        #     round(self.cbm + self.vacuum_locpot, 3)
-        # )
-        #
-        # if self.save_fig_path:
-        #     fig.savefig(os.path.join(self.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
-        #         self.entry["formula_pretty"],
-        #         self.entry["task_id"],
-        #         self.entry["task_label"])))
 
         state_df = pd.concat(list(channel.values()), ignore_index=False)
         proj_state_df = pd.concat(band_proj.values(), ignore_index=False)
