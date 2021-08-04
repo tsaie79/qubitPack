@@ -68,7 +68,7 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     band_ir_list = []
     for band_id, spin in zip(band_id_list, tot["spin"]):
         spin = "up" if spin == "1" else "down"
-        band_ir_list.append("".join(bd_ir_dict[spin]["irreducible_reps"][band_id].split(" ")))
+        band_ir_list.append("".join(bd_ir_dict[spin]["irreducible_reps"][band_id].split("\n")))
 
     # Integrate info into tot
     ir_info_sheet = pd.DataFrame({"band_id": band_id_list,
