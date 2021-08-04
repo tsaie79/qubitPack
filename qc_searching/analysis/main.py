@@ -16,7 +16,7 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts):
         energy = tot.loc[tot["spin"]==spin]["energy"]
         occup = []
         for i in tot.loc[tot["spin"]==spin]["n_occ_e"]:
-            if i == 1:
+            if i > 0.4:
                 occup.append(True)
             else:
                 occup.append(False)
