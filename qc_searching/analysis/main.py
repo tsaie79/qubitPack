@@ -42,7 +42,7 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     band_id_list = []
     band_idxs = input_sheet.index
     for band_idx, spin in zip(tot.index+1, tot["spin"]):
-        spin = "up" if spin == 1 else "down"
+        spin = "up" if spin == "1" else "down"
         bd_idx_sheet = bd_idx_dict[spin]["band_index"]
         if band_idx in bd_idx_sheet:
             band_id = bd_idx_sheet.index(band_idx)
@@ -60,14 +60,14 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     bd_degen_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]
     band_degen_list = []
     for band_id, spin in zip(band_id_list, tot["spin"]):
-        spin = "up" if spin == 1 else "down"
+        spin = "up" if spin == "1" else "down"
         band_degen_list.append(bd_degen_dict[spin]["band_degeneracy"][band_id])
 
     # Locate IR from irreducible_reps
     bd_ir_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]
     band_ir_list = []
     for band_id, spin in zip(band_id_list, tot["spin"]):
-        spin = "up" if spin == 1 else "down"
+        spin = "up" if spin == "1" else "down"
         band_ir_list.append(bd_ir_dict[spin]["irreducible_reps"][band_id].split(" ")[0])
 
     # Integrate info into tot
