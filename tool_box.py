@@ -64,6 +64,13 @@ def selective_dyn_site(structure, tgt_sites_idx):
     modified_structure = poscar.structure
     return modified_structure
 
+def get_site_idx_along_z(structure, z_min, z_max):
+    tgt_sites = {}
+    for idx, site in structure.sites:
+        c = site.c
+        if z_min <= c <= z_max:
+            tgt_sites[idx] = c
+    return tgt_sites
 
 def defect_from_primitive_cell(orig_st, defect_type, natom, substitution=None, distort=0.002, vacuum_thickness=None):
     """
