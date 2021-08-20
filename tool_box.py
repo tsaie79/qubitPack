@@ -571,3 +571,9 @@ def get_band_edges_characters(bs):
                     data["is_vbm_cbm_from_same_element"] = False
 
         return data
+
+def plot_lopot(db, task_id):
+    from matplotlib import pyplot as plt
+    locpot = db.collection.find_one({"task_id":task_id})["calcs_reversed"][0]["output"]["locpot"]["2"]
+    plt.plot(locpot)
+    plt.show()
