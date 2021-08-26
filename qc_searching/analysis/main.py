@@ -78,7 +78,7 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     tot = pd.concat([tot, ir_info_sheet], axis=1)
     return tot
 
-def get_defect_state(db, db_filter, cbm, vbm, path_save_fig, plot=True, clipboard="tot", locpot=None,
+def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboard="tot", locpot=None,
                      threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, top_texts=None) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:

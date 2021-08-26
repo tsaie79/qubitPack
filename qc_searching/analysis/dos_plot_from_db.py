@@ -9,6 +9,7 @@ from glob import glob
 import subprocess
 import plotly.tools as tls
 import plotly
+from matplotlib import pyplot as plt
 
 FIG_SAVING_FILE_PATH = "/Users/jeng-yuantsai/quantumComputing/WSe2_doping/plot"
 DB_CONFIG_PATH = "/Users/jeng-yuantsai/PycharmProjects/git/my_pycharm_projects/database/db_config/formation_energy_related"
@@ -57,7 +58,6 @@ class DosPlotDB:
         # return bandgap, cbm, vbm, fermi
 
     def total_dos(self, energy_upper_bound, energy_lower_bound):
-
         # 2. plot dos
         plotter = DosPlotter(zero_at_efermi=False, stack=False, sigma=0)
         # os.makedirs(self.name + "_figures/%s/" % "total", exist_ok=True)
@@ -68,7 +68,8 @@ class DosPlotDB:
 
         # plotly_plot = tls.mpl_to_plotly(fig)
         # plotly.offline.plot(plotly_plot, filename=os.path.join("/home/jengyuantsai/PycharmProjects/qc_searching/analysis/test_figures","procar.html"))
-
+        fig = plt.gcf()
+        fig.set_size_inches(18.5, 13.5, forward=True)
         plot.legend(loc=1)
         plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
         plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
@@ -97,6 +98,8 @@ class DosPlotDB:
         plotter.add_dos_dict(projection)
         # plotter.add_dos_dict({"tdos": self.complete_dos1})
         plot = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
+        fig = plt.gcf()
+        fig.set_size_inches(18.5, 13.5, forward=True)
         plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
         plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
         plot.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
@@ -127,6 +130,8 @@ class DosPlotDB:
             dosplot.add_dos("total_dos", self.complete_dos1)
             # plot = dosplot.get_plot(xlim=[-2.5, 2.5])
             plot = dosplot.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
+            fig = plt.gcf()
+            fig.set_size_inches(18.5, 13.5, forward=True)
             plot.legend(loc=1)
             plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
             plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
@@ -158,6 +163,8 @@ class DosPlotDB:
             plot = dosplot.add_dos_dict(dos_dict)
             # plot = dosplot.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
             plot = dosplot.get_plot()
+            fig = plt.gcf()
+            fig.set_size_inches(18.5, 13.5, forward=True)
             plot.legend()
             plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
             plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
