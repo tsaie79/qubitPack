@@ -1,5 +1,3 @@
-import shutil
-
 from pymatgen import Spin
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Poscar, Structure
@@ -7,18 +5,18 @@ from pymatgen.analysis.local_env import CrystalNN
 from pymatgen.analysis.defects.core import Vacancy, Substitution
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-import numpy as np
-import os
-from collections import OrderedDict, defaultdict
-
-from monty.serialization import loadfn, dumpfn
-
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 
 from phonopy.phonon.irreps import character_table
 
 from atomate.vasp.database import VaspCalcDb
 
+import numpy as np
+import pandas as pd
+import os, shutil
+from collections import OrderedDict, defaultdict
+
+from monty.serialization import loadfn, dumpfn
 
 def get_db(db_name, collection_name, user="Jeng_ro", password="qimin", port=1234):
     return VaspCalcDb(host="localhost", port=port, database=db_name,
