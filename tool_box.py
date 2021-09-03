@@ -561,14 +561,14 @@ def get_band_edges_characters(bs):
                         }
                     )
         print(data)
-        for spin_vbm in [Spin.up.name, Spin.down.name]:
-            for spin_cbm in [Spin.up.name, Spin.down.name]:
-                if data["vbm"][spin_vbm].get("max_element_idx".format(spin_vbm), "Yes") == \
-                        data["cbm"][spin_cbm].get("max_element_idx".format(spin_cbm), "No"):
-                    data["is_vbm_cbm_from_same_element"] = True
-                    break
-                else:
-                    data["is_vbm_cbm_from_same_element"] = False
+        spins = [(spin_vbm, spin_cbm) for spin_vbm in [Spin.up.name, Spin.down.name] for spin_cbm in [Spin.up.name, Spin.down.name]]
+        for spin in spins:
+            if data["vbm"][spin[0]].get("max_element_idx", "Yes") == \
+                    data["cbm"][spin[1]].get("max_element_idx", "No"):
+                data["is_vbm_cbm_from_same_element"] = True
+                break
+            else:
+                data["is_vbm_cbm_from_same_element"] = False
 
         return data
 
@@ -577,3 +577,28 @@ def plot_lopot(db, task_id):
     locpot = db.collection.find_one({"task_id":task_id})["calcs_reversed"][0]["output"]["locpot"]["2"]
     plt.plot(locpot)
     plt.show()
+
+
+class IOTools:
+    def __init__(self, output_path, pandas_df= None, excel_file=None, json_file=None):
+        self.df = pandas_df
+        self.excel_file = excel_file
+        self.json_file = json_file
+        self.output_path = output_path
+
+    def read_excel(self):
+        return pd.read_excel(os.path.join(PATH_EXCEL, self.excel_file+".xlsx"))
+
+    def read_json(self):
+        return loadfn(os.path.join(PATH_EXCEL, self.json_file+".json"))
+
+    def to_excel(self, file_name):
+        self.df.to_excel(
+            os.path.join(self.output_path, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=False)
+
+    def to_json(self, file_name):
+        self.df.to_json(
+            os.path.join(self.output_path, "{}_{}.json".format(file_name, str(datetime.datetime.now()))), orient="records", indent=4)
+
+    def get_diff_btw_dfs(self, df1, df2):
+        return  pd.concat([df1,df2]).drop_duplicates(keep=False)
