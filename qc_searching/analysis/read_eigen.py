@@ -159,7 +159,7 @@ class DetermineDefectState:
             self.vbm = self.entry_host["vbm_hse_nosoc"] + locpot_c2db[2]
             efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot + locpot_c2db[2]
             self.efermi = efermi_to_defect_vac
-
+            
         elif locpot:
             self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
             db_host = locpot[0]
@@ -172,13 +172,14 @@ class DetermineDefectState:
             self.vbm = self.entry_host["output"]["vbm"] - self.vacuum_locpot_host + locpot[2]
             efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot + locpot[2]
             self.efermi = efermi_to_defect_vac
-
+        
         else:
             print("No vacuum alignment!")
             self.vacuum_locpot = 0
             self.efermi = self.entry["calcs_reversed"][0]["output"]["efermi"]
             self.cbm = cbm
             self.vbm = vbm
+            
 
         # if locpot and self.entry["vacuum_locpot"]:
         #     self.vacuum_locpot = self.entry["vacuum_locpot"]["value"]

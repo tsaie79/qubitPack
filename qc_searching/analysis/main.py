@@ -10,10 +10,13 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 
-def get_eigen_plot(tot, determine_defect_state_obj, top_texts):
+def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligment=False):
     levels = {"1": {}, "-1":{}}
     for spin in ["1", "-1"]:
         energy = tot.loc[tot["spin"]==spin]["energy"]
+        if is_vacuum_aligment:
+            energy -= determine_defect_state_obj.vacuum_locpot
+            energy = np.round(energy, 3)
         occup = []
         for i in tot.loc[tot["spin"]==spin]["n_occ_e"]:
             if i > 0.4:
@@ -23,10 +26,17 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts):
         levels[spin].update(dict(zip(energy, occup)))
     print(levels)
     eng = EnergyLevel(levels, top_texts=top_texts)
-    fig = eng.plotting(
-        round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
-        round(determine_defect_state_obj.cbm + determine_defect_state_obj.vacuum_locpot, 3)
-    )
+    if is_vacuum_aligment:
+        fig = eng.plotting(
+            round(determine_defect_state_obj.vbm, 3),
+            round(determine_defect_state_obj.cbm, 3)
+        )
+    else:
+        fig = eng.plotting(
+            round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
+            round(determine_defect_state_obj.cbm + determine_defect_state_obj.vacuum_locpot, 3)
+        )
+    
 
     if determine_defect_state_obj.save_fig_path:
         fig.savefig(os.path.join(determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
@@ -79,7 +89,8 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     return tot
 
 def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboard="tot", locpot=None,
-                     threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, top_texts=None) -> object:
+                     threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, top_texts=None, 
+                     is_vacuum_aligment_on_plot=False) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
     "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
@@ -105,7 +116,7 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
             top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
 
     print(top_texts)
-    get_eigen_plot(tot, can, top_texts)
+    get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
 
     print("**"*20)
     print(d_df)

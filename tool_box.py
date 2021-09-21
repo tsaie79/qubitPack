@@ -1,4 +1,4 @@
-from pymatgen import Spin
+from pymatgen.electronic_structure.core import Spin
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Poscar, Structure
 from pymatgen.analysis.local_env import CrystalNN
@@ -578,25 +578,25 @@ def plot_lopot(db, task_id):
 
 
 class IOTools:
-    def __init__(self, output_path, pandas_df= None, excel_file=None, json_file=None):
+    def __init__(self, cwd, pandas_df= None, excel_file=None, json_file=None):
         self.df = pandas_df
         self.excel_file = excel_file
         self.json_file = json_file
-        self.output_path = output_path
+        self.cwd = cwd
 
     def read_excel(self):
-        return pd.read_excel(os.path.join(PATH_EXCEL, self.excel_file+".xlsx"))
+        return pd.read_excel(os.path.join(self.cwd, self.excel_file+".xlsx"))
 
     def read_json(self):
-        return loadfn(os.path.join(PATH_EXCEL, self.json_file+".json"))
+        return loadfn(os.path.join(self.cwd, self.json_file+".json"))
 
     def to_excel(self, file_name):
         self.df.to_excel(
-            os.path.join(self.output_path, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=False)
+            os.path.join(self.cwd, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=False)
 
     def to_json(self, file_name):
         self.df.to_json(
-            os.path.join(self.output_path, "{}_{}.json".format(file_name, str(datetime.datetime.now()))), orient="records", indent=4)
+            os.path.join(self.cwd, "{}_{}.json".format(file_name, str(datetime.datetime.now()))), orient="records", indent=4)
 
     def get_diff_btw_dfs(self, df1, df2):
         return  pd.concat([df1,df2]).drop_duplicates(keep=False)
