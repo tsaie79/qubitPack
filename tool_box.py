@@ -483,10 +483,11 @@ def phonopy_structure(orig_st):
     from subprocess import call, check_output
     import shutil
 
-    os.makedirs("standardize_st", exist_ok=True)
-    os.chdir("standardize_st")
+    os.makedirs(os.path.expanduser(os.path.join("~", "standardize_st")), exist_ok=True)
+    os.chdir(os.path.expanduser(os.path.join("~", "standardize_st")))
     orig_st.to("poscar", "POSCAR")
-    call("phonopy --symmetry --tolerance 0.01 -c ~/standardize_st/POSCAR".split(" "), shell=True)
+    call("phonopy --symmetry --tolerance 0.01 -c {}/POSCAR".format(os.path.expanduser(
+        os.path.join("~", "standardize_st"))).split(" "), shell=True)
     std_st = Structure.from_file("PPOSCAR")
     std_st.to("poscar", "POSCAR")
     pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
