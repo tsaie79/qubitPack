@@ -486,7 +486,7 @@ def phonopy_structure(orig_st):
     path = os.path.expanduser(os.path.join("~", "standardize_st"))
     os.makedirs(path, exist_ok=True)
     orig_st.to("poscar", os.path.join(path, "POSCAR"))
-    call("phonopy --symmetry --tolerance 0.01 -c {}/POSCAR".format(path).split(" "), shell=True)
+    call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "), shell=True, cwd=path)
     std_st = Structure.from_file(os.path.join(path, "PPOSCAR"))
     std_st.to("poscar", os.path.join(path, "POSCAR"))
     pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
