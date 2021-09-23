@@ -482,14 +482,13 @@ def get_lowest_unocc_band_idx(task_id, db_obj, nbands, prevent_JT=True, second_e
 def phonopy_structure(orig_st):
     from subprocess import call, check_output
     import shutil
-    os.makedirs("standardize_st", exist_ok=True)
-    os.chdir("standardize_st")
-    orig_st.to("poscar", "POSCAR")
-    call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "), shell=True)
-    std_st = Structure.from_file("PPOSCAR")
-    std_st.to("poscar", "POSCAR")
-    pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
-    std_st = Structure.from_file("POSCAR_std")
+    os.makedirs("~/standardize_st", exist_ok=True)
+    orig_st.to("poscar", "~/standardize_st/POSCAR")
+    call("phonopy --symmetry --tolerance 0.01 -c ~/standardize_st/POSCAR".split(" "), shell=True)
+    std_st = Structure.from_file("~/standardize_st/PPOSCAR")
+    std_st.to("poscar", "~/standardize_st/POSCAR")
+    pos2aBR_out = check_output(["~/standardize_st/pos2aBR"], universal_newlines=True).split("\n")
+    std_st = Structure.from_file("~/standardize_st/POSCAR_std")
     os.chdir("..")
     shutil.rmtree("standardize_st")
     return std_st, pos2aBR_out
