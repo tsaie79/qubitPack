@@ -492,7 +492,7 @@ def phonopy_structure(orig_st):
     std_st.to("poscar", "POSCAR")
     pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
     std_st = Structure.from_file("POSCAR_std")
-    shutil.rmtree(os.path.join(path, "standardize_st"))
+    shutil.rmtree(path)
     return std_st, pos2aBR_out
 
 def get_encut(st):
