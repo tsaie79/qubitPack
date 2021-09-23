@@ -485,15 +485,13 @@ def phonopy_structure(orig_st):
 
     path = os.path.expanduser(os.path.join("~", "standardize_st"))
     os.makedirs(path, exist_ok=True)
-    os.chdir(path)
-    orig_st.to("poscar", "POSCAR")
+    orig_st.to("poscar", os.path.join(path, "POSCAR"))
     call("phonopy --symmetry --tolerance 0.01 -c {}/POSCAR".format(path).split(" "), shell=True)
-    std_st = Structure.from_file("PPOSCAR")
-    std_st.to("poscar", "POSCAR")
+    std_st = Structure.from_file(os.path.join(path, "PPOSCAR"))
+    std_st.to("poscar", os.path.join(path, "POSCAR"))
     pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
-    std_st = Structure.from_file("POSCAR_std")
-    os.chdir("..")
-    shutil.rmtree("standardize_st")
+    std_st = Structure.from_file(os.path.join(path, "POSCAR_std"))
+    shutil.rmtree(os.path.join(path, "standardize_st"))
     return std_st, pos2aBR_out
 
 def get_encut(st):
