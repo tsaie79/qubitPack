@@ -591,7 +591,7 @@ class IOTools:
     def read_json(self):
         return loadfn(os.path.join(self.cwd, self.json_file+".json"))
 
-    def to_excel(self, file_namem, index=False):
+    def to_excel(self, file_name, index=False):
         self.df.to_excel(
             os.path.join(self.cwd, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=index)
 
