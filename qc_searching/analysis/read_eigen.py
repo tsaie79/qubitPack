@@ -169,7 +169,10 @@ class DetermineDefectState:
                 self.entry_host = db_host.collection.find_one({"task_id": locpot[1]})
             self.vacuum_locpot_host = max(self.entry_host["calcs_reversed"][0]["output"]["locpot"]["2"])
             self.cbm = self.entry_host["output"]["cbm"] - self.vacuum_locpot_host + locpot[2]
+            self.top_threshold =  self.entry_host["output"]["cbm"] - self.vacuum_locpot_host + locpot[4]
             self.vbm = self.entry_host["output"]["vbm"] - self.vacuum_locpot_host + locpot[2]
+            self.bottom_threshold =  self.entry_host["output"]["vbm"] - self.vacuum_locpot_host + locpot[3]
+      
             efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot + locpot[2]
             self.efermi = efermi_to_defect_vac
         
@@ -278,7 +281,7 @@ class DetermineDefectState:
         for spin in spins:
             band_info = {}
             try:
-                eigenvals.update(get_eigenvals(spin, self.eigenvals, energy_range=[self.vbm, self.cbm]))
+                eigenvals.update(get_eigenvals(spin, self.eigenvals, energy_range=[self.bottom_threshold, self.top_threshold]))
                 band_detail, proj = get_promising_state(spin, eigenvals)
                 band_proj[spin] = proj
                 band_info.update(band_detail)

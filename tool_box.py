@@ -13,7 +13,7 @@ from atomate.vasp.database import VaspCalcDb
 
 import numpy as np
 import pandas as pd
-import os, shutil
+import os, shutil, datetime
 from collections import OrderedDict, defaultdict
 
 from monty.serialization import loadfn, dumpfn
@@ -591,9 +591,9 @@ class IOTools:
     def read_json(self):
         return loadfn(os.path.join(self.cwd, self.json_file+".json"))
 
-    def to_excel(self, file_name):
+    def to_excel(self, file_namem, index=False):
         self.df.to_excel(
-            os.path.join(self.cwd, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=False)
+            os.path.join(self.cwd, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=index)
 
     def to_json(self, file_name):
         self.df.to_json(

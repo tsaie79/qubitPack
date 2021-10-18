@@ -848,7 +848,7 @@ def main():
         # print(pd.DataFrame(results))
 
     # regular_antisite("antisiteQubit", "W_Se_Ef_gamma", ["Se-W"])
-    regular_antisite("antisiteQubit", "Mo_Te_Ef_gamma", ["Mo-Te"])
+    regular_antisite("antisiteQubit", "W_Te_Ef_gamma", ["Te-W"])
 
 
 

@@ -24,26 +24,29 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
             else:
                 occup.append(False)
         levels[spin].update(dict(zip(energy, occup)))
-    print(levels)
     eng = EnergyLevel(levels, top_texts=top_texts)
     if is_vacuum_aligment:
         fig = eng.plotting(
             round(determine_defect_state_obj.vbm, 3),
             round(determine_defect_state_obj.cbm, 3)
         )
+        levels.update({"vbm": round(determine_defect_state_obj.vbm, 3), "cbm": round(determine_defect_state_obj.cbm, 3)})
+
     else:
         fig = eng.plotting(
             round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
             round(determine_defect_state_obj.cbm + determine_defect_state_obj.vacuum_locpot, 3)
         )
-    
+        levels.update({"vbm": round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
+                       "cbm": round(determine_defect_state_obj.cbm + determine_defect_state_obj.vacuum_locpot, 3)})
+
 
     if determine_defect_state_obj.save_fig_path:
         fig.savefig(os.path.join(determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
             determine_defect_state_obj.entry["formula_pretty"],
             determine_defect_state_obj.entry["task_id"],
             determine_defect_state_obj.entry["task_label"])))
-
+    return levels
 def get_ir_info(tot, ir_db, ir_entry_filter):
     # Locate idx in band_idex
     ir_entry = ir_db.collection.find_one(ir_entry_filter)
@@ -116,7 +119,7 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
             top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
 
     print(top_texts)
-    get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
+    levels = get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
 
     print("**"*20)
     print(d_df)
@@ -193,8 +196,8 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
     print(proj)
     print("=="*20)
     print(tot)
-    # print("=="*20)
-    # print(d_df)
+    print("=="*20)
+    print(levels)
 
 
     if type(clipboard) == tuple:
@@ -239,7 +242,7 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
                 ))
                 df.to_excel(path)
 
-    return tot, proj, d_df
+    return tot, proj, d_df, levels
 
 if __name__ == '__main__':
     from qubitPack.tool_box import get_db
