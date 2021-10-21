@@ -50,6 +50,12 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
 def get_ir_info(tot, ir_db, ir_entry_filter):
     # Locate idx in band_idex
     ir_entry = ir_db.collection.find_one(ir_entry_filter)
+    if ir_entry:
+        print("IR taskid:{}".format(ir_entry["task_id"]))
+    else:
+        print("IR taskid:{}".format(None))
+        return tot, ir_entry
+        
     input_sheet = tot["spin"]
     bd_idx_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]#["up"]["band_index"]
     band_id_list = []
@@ -89,10 +95,10 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
                                   "band_ir": band_ir_list},
                                  index=tot.index)
     tot = pd.concat([tot, ir_info_sheet], axis=1)
-    return tot
+    return tot, ir_entry
 
 def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboard="tot", locpot=None,
-                     threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, top_texts=None, 
+                     threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, 
                      is_vacuum_aligment_on_plot=False) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
@@ -108,8 +114,9 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
         threshold=threshold,
         select_bands=None
     )
-    if ir_db and ir_entry_filter:
-        tot = get_ir_info(tot, ir_db, ir_entry_filter)
+    top_texts = None
+    tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+    if ir_db and ir_entry_filter and ir_entry:
         top_texts = {"1": [], "-1": []}
         for spin in ["1", "-1"]:
             ir_info = tot.loc[tot["spin"]==spin]
@@ -126,14 +133,18 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
     e = {}
     e.update(
         {
-            "up_band_idx": d_df["up_band_idx"][0],
-            "up_from_vbm": d_df["up_from_vbm"][0],
-            "up_occ": d_df["up_occ"][0],
-            "dn_band_idx": d_df["dn_band_idx"][0],
-            "dn_from_vbm": d_df["dn_from_vbm"][0],
-            "dn_occ": d_df["dn_occ"][0]
+            "up_band_idx": tuple(d_df["up_band_idx"][0]),
+            "up_from_vbm": tuple(d_df["up_from_vbm"][0]),
+            "up_occ": tuple(d_df["up_occ"][0]),
+            "dn_band_idx": tuple(d_df["dn_band_idx"][0]),
+            "dn_from_vbm": tuple(d_df["dn_from_vbm"][0]),
+            "dn_occ": tuple(d_df["dn_occ"][0]),
         }
     )
+    if top_texts:
+        e.update({"up_ir": tuple(top_texts["1"])})
+        e.update({"dn_ir": tuple(top_texts["-1"])})
+
     # well-defined in-gap state: energetic difference of occupied states and vbm > 0.1
     sum_occ_up = 0
     for en_up, occ_up in zip(d_df["up_from_vbm"][0], d_df["up_occ"][0]):
@@ -144,8 +155,8 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
         if abs(en_dn) > 0.1 and occ_dn > 0.2:
             sum_occ_dn += occ_dn
 
-    e.update({"up_deg": list(Counter(np.around(e["up_from_vbm"], 2)).values()),
-              "dn_deg": list(Counter(np.around(e["dn_from_vbm"], 2)).values())})
+    e.update({"up_deg": tuple(Counter(np.around(e["up_from_vbm"], 2)).values()),
+              "dn_deg": tuple(Counter(np.around(e["dn_from_vbm"], 2)).values())})
     if sum_occ_up > sum_occ_dn:
         e.update({"triplet_from": "up"})
     else:
