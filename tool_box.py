@@ -585,8 +585,16 @@ class IOTools:
         self.json_file = json_file
         self.cwd = cwd
 
-    def read_excel(self):
-        return pd.read_excel(os.path.join(self.cwd, self.excel_file+".xlsx"))
+    def read_excel(self, string_tuple_to_tuple=True):
+        df = pd.read_excel(os.path.join(self.cwd, self.excel_file+".xlsx"))
+        if string_tuple_to_tuple:
+            import ast
+            for k in df.keys():
+                try:
+                    df[k] = df[k].apply(ast.literal_eval)
+                except Exception:
+                    continue
+        return df
 
     def read_json(self):
         return loadfn(os.path.join(self.cwd, self.json_file+".json"))

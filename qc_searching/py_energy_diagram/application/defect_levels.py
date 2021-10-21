@@ -15,21 +15,19 @@ class EnergyLevel(ED):
         self.dn_top_texts.extend(["" for i in range(len(self.down) - len(self.dn_top_texts))])
         print(self.up_top_texts, self.dn_top_texts)
     def plotting(self, cbm, vbm):
-            for eig, occup, top_text in zip(self.up.keys(), self.up.values(), self.up_top_texts):
-                self.add_level(energy=eig, position="last", occupied=occup, top_text=top_text)
+        for eig, occup, top_text in zip(self.up.keys(), self.up.values(), self.up_top_texts):
+            self.add_level(energy=eig, position="last", occupied=occup, top_text=top_text)
 
-            for eig, occup, top_text in zip(self.down.keys(), self.down.values(), self.dn_top_texts):
-                if eig == list(self.down.keys())[0]:
-                    self.add_level(eig, None, occupied=occup, top_text=top_text)
-                else:
-                    self.add_level(eig, None, "last", occupied=occup, top_text=top_text)
+        for eig, occup, top_text in zip(self.down.keys(), self.down.values(), self.dn_top_texts):
+            if eig == list(self.down.keys())[0]:
+                self.add_level(eig, None, occupied=occup, top_text=top_text)
+            else:
+                self.add_level(eig, None, "last", occupied=occup, top_text=top_text)
 
 
-            self.plot(show_IDs=True, cbm=cbm, vbm=vbm)
-            my_fig = self.fig
-            my_fig.show()
-
-            return my_fig
+        self.plot(show_IDs=True, cbm=cbm, vbm=vbm)
+        my_fig = self.fig
+        return my_fig
 
 
 if __name__ == '__main__':

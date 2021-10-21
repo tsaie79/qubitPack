@@ -31,7 +31,6 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
             round(determine_defect_state_obj.cbm, 3)
         )
         levels.update({"vbm": round(determine_defect_state_obj.vbm, 3), "cbm": round(determine_defect_state_obj.cbm, 3)})
-
     else:
         fig = eng.plotting(
             round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
@@ -40,13 +39,13 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
         levels.update({"vbm": round(determine_defect_state_obj.vbm + determine_defect_state_obj.vacuum_locpot, 3),
                        "cbm": round(determine_defect_state_obj.cbm + determine_defect_state_obj.vacuum_locpot, 3)})
 
-
     if determine_defect_state_obj.save_fig_path:
         fig.savefig(os.path.join(determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
             determine_defect_state_obj.entry["formula_pretty"],
             determine_defect_state_obj.entry["task_id"],
             determine_defect_state_obj.entry["task_label"])))
-    return levels
+    
+    return levels, fig
 def get_ir_info(tot, ir_db, ir_entry_filter):
     # Locate idx in band_idex
     ir_entry = ir_db.collection.find_one(ir_entry_filter)
@@ -97,7 +96,7 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     tot = pd.concat([tot, ir_info_sheet], axis=1)
     return tot, ir_entry
 
-def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboard="tot", locpot=None,
+def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
                      threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None, 
                      is_vacuum_aligment_on_plot=False) -> object:
     """
@@ -115,18 +114,19 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
         select_bands=None
     )
     top_texts = None
-    tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
-    if ir_db and ir_entry_filter and ir_entry:
-        top_texts = {"1": [], "-1": []}
-        for spin in ["1", "-1"]:
-            ir_info = tot.loc[tot["spin"]==spin]
-            for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"], ir_info["band_degeneracy"], ir_info["band_ir"]):
-                info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
-                top_texts[spin].append(info)
-            top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
+    if ir_db and ir_entry_filter:
+        tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+        if ir_entry:
+            top_texts = {"1": [], "-1": []}
+            for spin in ["1", "-1"]:
+                ir_info = tot.loc[tot["spin"]==spin]
+                for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"], ir_info["band_degeneracy"], ir_info["band_ir"]):
+                    info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+                    top_texts[spin].append(info)
+                top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
 
     print(top_texts)
-    levels = get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
+    levels, eigen_plot = get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
 
     print("**"*20)
     print(d_df)
@@ -234,14 +234,34 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot=True, clipboar
             cbm_set = cbm
             vbm_set = vbm
             efermi = can.efermi
-
+        
+        
         dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
         # dos_plot.nn = [25, 26, 31, 30, 29, 49, 45]
-        dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
-        print(dos_plot.nn)
-        dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
-        dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
-        # plt.show()
+        if plot == "eigen":
+            eigen_plot.show()
+        if plot == "tdos":
+            tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+            tdos_plt.show()
+            print(dos_plot.nn)
+        if plot == "site":
+            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+            site_dos_plt.show()
+        if plot == "spd":
+            spd_dos_plt = dos_plot.spd_plots(energy_upper_bound=2, energy_lower_bound=2)
+            spd_dos_plt.show()
+        if plot == "orbital":
+            orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
+            orbital_dos_plt.show()
+        if plot == "all":
+            tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+            tdos_plt.show()
+            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+            site_dos_plt.show()
+            orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
+            orbital_dos_plt.show()
+            eigen_plot.show()
+
 
         if path_save_fig:
             for df, df_name in zip([tot, proj, d_df], ["tot", "proj", "d_state"]):

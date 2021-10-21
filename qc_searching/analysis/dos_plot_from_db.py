@@ -46,6 +46,7 @@ class DosPlotDB:
         self.nn = self.e["NN"]
 
 
+
     def band_gap(self):
         """
         If it returns null, the material could be METAL
@@ -64,28 +65,26 @@ class DosPlotDB:
         # 2.1 total dos
         # print(self.complete_dos1.get_site_spd_dos(self.complete_dos1.structure.sites[0])[OrbitalType.s])
         plotter.add_dos("tdos", self.complete_dos1, line_style="-")
-        plot = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
+        tdos_plt = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, 
+                                           self.cbm_primitive+energy_upper_bound])
 
-        # plotly_plot = tls.mpl_to_plotly(fig)
-        # plotly.offline.plot(plotly_plot, filename=os.path.join("/home/jengyuantsai/PycharmProjects/qc_searching/analysis/test_figures","procar.html"))
-        fig = plt.gcf()
-        fig.set_size_inches(18.5, 13.5, forward=True)
-        plot.legend(loc=1)
-        plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-        plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-        plot.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
-        plot.legend(loc=1)
-        plot.title(self.e["formula_pretty"]+" total_dos")
+        # fig = plt.gcf()
+        # fig.set_size_inches(18.5, 13.5, forward=True)
+        tdos_plt.legend(loc=1)
+        tdos_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+        tdos_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        tdos_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        tdos_plt.legend(loc=1)
+        tdos_plt.title(self.e["formula_pretty"]+" total_dos")
 
         if self.path_save_fig:
-            plot.savefig(os.path.join(self.path_save_fig, "defect_states", "{}_{}_{}.tdos.png".format(
+            tdos_plt.savefig(os.path.join(self.path_save_fig, "defect_states", "{}_{}_{}.tdos.png".format(
                 self.e["formula_pretty"],
                 self.e["task_id"],
                 self.e["task_label"],
             )), img_format="png")
-        plot.show()
 
-        return plot
+        return tdos_plt
 
     def orbital_plot(self, index, energy_upper_bound, energy_lower_bound):
 
@@ -97,86 +96,77 @@ class DosPlotDB:
                                   self.complete_dos1.structure.sites[index], Orbital(j)) for j in range(0, 9)]))
         plotter.add_dos_dict(projection)
         # plotter.add_dos_dict({"tdos": self.complete_dos1})
-        plot = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
+        orbital_plt = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, 
+                                           self.cbm_primitive+energy_upper_bound])
         fig = plt.gcf()
         fig.set_size_inches(18.5, 13.5, forward=True)
-        plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-        plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-        plot.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
-        plot.legend(loc=1)
-        plot.title(self.e["formula_pretty"] + " site%d %s" % (index, self.complete_dos1.structure.sites[index].specie))
+        orbital_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+        orbital_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        orbital_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        orbital_plt.legend(loc=1)
+        orbital_plt.title(self.e["formula_pretty"] + " site%d %s" % (index, self.complete_dos1.structure.sites[index].specie))
 
         if self.path_save_fig:
-            plot.savefig(os.path.join(self.path_save_fig, "defect_states", "{}_{}.{}_idx{}.orbital_dos.png".format(
+            orbital_plt.savefig(os.path.join(self.path_save_fig, "defect_states", "{}_{}.{}_idx{}.orbital_dos.png".format(
                 self.e["formula_pretty"],
                 self.e["task_id"],
                 self.e["task_label"],
                 index
             )), img_format="png")
 
-        plot.show()
 
         # plot.savefig(self.name + "_figures/%s/" % self.fig_name + self.name + "_%s_%d.eps" % (
         #     self.complete_dos.structure.sites[index].specie, index), img_format="eps")
-        return plot
+        return orbital_plt
 
-    def sites_plots(self, energy_upper_bound, energy_lower_bound, spd=False):
+    def sites_plots(self, energy_upper_bound, energy_lower_bound):
         title = self.e["formula_pretty"]
+        plotter = DosPlotter(zero_at_efermi=False, stack=True)
+        for i in self.nn:
+            plotter.add_dos(str(i), self.complete_dos1.get_site_dos(self.complete_dos1.structure[i]))
+        plotter.add_dos("total_dos", self.complete_dos1)
+        # plot = dosplot.get_plot(xlim=[-2.5, 2.5])
+        site_dos_plt = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, 
+                                       self.cbm_primitive+energy_upper_bound])
 
-        def sites_total_plots():
-            dosplot = DosPlotter(zero_at_efermi=False, stack=True)
-            for i in self.nn:
-                dosplot.add_dos(str(i), self.complete_dos1.get_site_dos(self.complete_dos1.structure[i]))
-            dosplot.add_dos("total_dos", self.complete_dos1)
-            # plot = dosplot.get_plot(xlim=[-2.5, 2.5])
-            plot = dosplot.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
-            fig = plt.gcf()
-            fig.set_size_inches(18.5, 13.5, forward=True)
-            plot.legend(loc=1)
-            plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-            plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-            plot.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
-            # fig = plot.figure()
-            # plotly_plot = tls.mpl_to_plotly(fig)
-            # plotly.offline.plot(plotly_plot, filename=os.path.join("procar.html"))
-            plot.title(title+" site PDOS"+" Charge state:%d" % self.e["charge_state"])
-            if self.path_save_fig:
-                plot.savefig(os.path.join(self.path_save_fig, "defect_states", "{}_{}_{}.pdos.png".format(
-                    title,
-                    self.e["task_id"],
-                    self.e["task_label"])), img_format="png")
-            plot.show()
-            return plot
+        site_dos_plt.legend(loc=1)
+        site_dos_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+        site_dos_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        site_dos_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
 
-        def spd_plots():
-            dosplot = DosPlotter(zero_at_efermi=False)
-            dos_dict = defaultdict(object)
-            for site in self.e["NN"]:
-                for i in [0,1,2]:
-                    dos_dict[
-                        self.complete_dos1.structure.as_dict()["sites"][site]["label"]+str(site)+str(OrbitalType(i))
-                        ] = \
-                        self.complete_dos1.get_site_spd_dos(
-                            self.complete_dos1.structure.sites[site]
-                        )[OrbitalType(i)]
-            dos_dict["total_dos"] = self.complete_dos1
-            plot = dosplot.add_dos_dict(dos_dict)
-            # plot = dosplot.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
-            plot = dosplot.get_plot()
-            fig = plt.gcf()
-            fig.set_size_inches(18.5, 13.5, forward=True)
-            plot.legend()
-            plot.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-            plot.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-            plot.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
-            plot.show()
-            return plot
+        site_dos_plt.title(title+" site PDOS"+" Charge state:%d" % self.e["charge_state"])
+        if self.path_save_fig:
+            site_dos_plt.savefig(os.path.join(self.path_save_fig, "defect_states", "{}_{}_{}.pdos.png".format(
+                title,
+                self.e["task_id"],
+                self.e["task_label"])), img_format="png")
+        return site_dos_plt
 
-        if spd:
-            spd_plots()
-        else:
-            sites_total_plots()
-
+    def spd_plots(self, energy_upper_bound, energy_lower_bound):
+        title = self.e["formula_pretty"]
+        plotter = DosPlotter(zero_at_efermi=False)
+        dos_dict = defaultdict(object)
+        for site in self.e["NN"]:
+            for i in [0,1,2]:
+                dos_dict[
+                    self.complete_dos1.structure.as_dict()["sites"][site]["label"]+str(site)+str(OrbitalType(i))
+                    ] = \
+                    self.complete_dos1.get_site_spd_dos(
+                        self.complete_dos1.structure.sites[site]
+                    )[OrbitalType(i)]
+        dos_dict["total_dos"] = self.complete_dos1
+        plotter.add_dos_dict(dos_dict)
+        # plot = dosplot.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, self.cbm_primitive+energy_upper_bound])
+        spd_plt = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound,
+                                         self.cbm_primitive+energy_upper_bound])
+        # fig = plt.gcf()
+        # fig.set_size_inches(18.5, 13.5, forward=True)
+        spd_plt.legend()
+        spd_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+        spd_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        spd_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        
+        return spd_plt
 # def main():
 #     d = DosPlotDB(db1="db_w1te2_040752_local", db2=None, db0=None,
 #                   defect_type="cation", name="test", icsd_id="040752",
