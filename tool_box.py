@@ -18,7 +18,7 @@ from collections import OrderedDict, defaultdict
 
 from monty.serialization import loadfn, dumpfn
 
-def get_db(db_name, collection_name, user="Jeng_ro", password="qimin", port=1234):
+def get_db(db_name, collection_name, user="Jeng_ro", password="qimin", port=12345):
     return VaspCalcDb(host="localhost", port=port, database=db_name,
                       collection=collection_name, user=user, password=password, authsource=db_name)
 
@@ -597,15 +597,16 @@ class IOTools:
         return df
 
     def read_json(self):
-        return loadfn(os.path.join(self.cwd, self.json_file+".json"))
+        return pd.DataFrame(oadfn(os.path.join(self.cwd, self.json_file+".json")))
 
     def to_excel(self, file_name, index=False):
         self.df.to_excel(
             os.path.join(self.cwd, "{}_{}.xlsx".format(file_name, str(datetime.datetime.now()))), index=index)
 
-    def to_json(self, file_name):
+    def to_json(self, file_name, index=False):
         self.df.to_json(
-            os.path.join(self.cwd, "{}_{}.json".format(file_name, str(datetime.datetime.now()))), orient="records", indent=4)
+            os.path.join(self.cwd, "{}_{}.json".format(file_name, str(datetime.datetime.now()))),
+            orient="records", indent=4, index=index)
 
     def get_diff_btw_dfs(self, df1, df2):
         return  pd.concat([df1,df2]).drop_duplicates(keep=False)
