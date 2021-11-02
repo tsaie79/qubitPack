@@ -22,8 +22,8 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
         print(energy)
         if is_vacuum_aligment:
             energy -= trunc(determine_defect_state_obj.vacuum_locpot, 3)
-            vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
-            cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
+            vbm = trunc(determine_defect_state_obj.vbm, 3) - trunc(determine_defect_state_obj.vacuum_locpot, 3)
+            cbm = trunc(determine_defect_state_obj.cbm, 3) - trunc(determine_defect_state_obj.vacuum_locpot, 3)
         else:
             vbm = trunc(determine_defect_state_obj.vbm, 3)
             cbm = trunc(determine_defect_state_obj.cbm, 3)
