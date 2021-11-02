@@ -10,19 +10,23 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 
+def trunc(values, decs=0):
+    return np.trunc(values*10**decs)/(10**decs)
+
 def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligment=False):
     levels = {"1": {}, "-1":{}}
     vbm, cbm = None, None
     for spin in ["1", "-1"]:
         energy = tot.loc[tot["spin"] == spin]["energy"]
+        energy = trunc(energy, 3)
+        print(energy)
         if is_vacuum_aligment:
-            energy -= determine_defect_state_obj.vacuum_locpot
-            energy = np.round(energy, 3)
-            vbm = round(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
-            cbm = round(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
+            energy -= trunc(determine_defect_state_obj.vacuum_locpot, 3)
+            vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
+            cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
         else:
-            vbm = round(determine_defect_state_obj.vbm, 3)
-            cbm = round(determine_defect_state_obj.cbm, 3)
+            vbm = trunc(determine_defect_state_obj.vbm, 3)
+            cbm = trunc(determine_defect_state_obj.cbm, 3)
         occup = []
         for i in tot.loc[tot["spin"]==spin]["n_occ_e"]:
             if i > 0.4:
@@ -30,7 +34,7 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
             else:
                 occup.append(False)
         levels[spin].update(dict(zip(energy, occup)))
-        
+        print(levels)
     eng = EnergyLevel(levels, top_texts=top_texts)
     fig = eng.plotting(vbm, cbm)
     levels.update({"vbm": vbm,  "cbm": cbm, "up_deg": [int(i.split("/")[1]) for i in top_texts["1"]], 
@@ -116,7 +120,9 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboa
             top_texts = {"1": [], "-1": []}
             for spin in ["1", "-1"]:
                 ir_info = tot.loc[tot["spin"]==spin]
-                for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"], ir_info["band_degeneracy"], ir_info["band_ir"]):
+                for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"],
+                                                             ir_info["band_degeneracy"],
+                                                             ir_info["band_ir"]):
                     info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
                     top_texts[spin].append(info)
                 top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
@@ -312,9 +318,9 @@ def new_get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot="all", cli
                     info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
                     top_texts_for_d_df[spin].append(info)
                 top_texts_for_d_df[spin] = list(dict.fromkeys(top_texts_for_d_df[spin]))
-                
-                
 
+
+    print("$$$"*20)
     print(top_texts)
     levels, eigen_plot = get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
 

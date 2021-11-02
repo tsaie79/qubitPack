@@ -296,7 +296,7 @@ class DetermineDefectState:
             except IndexError:
                 print("Threshold of projection is too high!")
 
-        print(levels)
+        # print(levels)
 
         state_df = pd.concat(list(channel.values()), ignore_index=False)
         proj_state_df = pd.concat(band_proj.values(), ignore_index=False)
@@ -517,10 +517,10 @@ class NewDetermineDefectState:
                             bulk_up_proj.append(test)
                             
                 for i in promising_band[spin]:
-                    up[i[0]] = (round(i[1][0], 3), (i[1][1] > 0.4, i[1][1], i[2], i[3], i[4]))
+                    up[i[0]] = (round(i[1][0], 5), (i[1][1] > 0.4, i[1][1], i[2], i[3], i[4]))
                     
                 for i in bulk_band[spin]:
-                    bulk_up[i[0]] = (round(i[1][0], 3), (i[1][1] > 0.4, i[1][1], i[2], i[3], i[4]))
+                    bulk_up[i[0]] = (round(i[1][0], 5), (i[1][1] > 0.4, i[1][1], i[2], i[3], i[4]))
                     
             return up, band_up_proj, bulk_up, bulk_up_proj
 
@@ -597,14 +597,14 @@ class NewDetermineDefectState:
             except IndexError:
                 print("Threshold of projection is too high!")
 
-        print(levels)
-        print(bulk_levels)
+        print("defect_levels: {}".format(levels))
+        print("bulk_levels: {}".format(bulk_levels))
 
         state_df = pd.concat(list(channel.values()), ignore_index=False)
         bulk_state_df = pd.concat(list(bulk_channel.values()), ignore_index=False)
         self.cbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 0, "energy"].min() 
         self.vbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 1, "energy"].max()
-        print(self.cbm, self.vbm)
+        print("perturbed band edges: (VBM, CBM): ({}, {})".format(self.vbm, self.cbm))
         
         proj_state_df = pd.concat(band_proj.values(), ignore_index=False)
         proj_state_df = proj_state_df.fillna(0)
@@ -641,7 +641,7 @@ class NewDetermineDefectState:
         up_states = state_df.loc[(state_df["spin"] == "1") & 
                                  (state_df["energy"] > self.vbm) & 
                                  (state_df["energy"] < self.cbm)]
-        print("D**"*20)
+        print("D**up_states"*20)
         print(up_states)
         up_dist_from_vbm = up_states["energy"] - self.vbm #(self.vbm + self.vacuum_locpot)
         up_dist_from_vbm = up_dist_from_vbm.round(3)
@@ -649,7 +649,7 @@ class NewDetermineDefectState:
         up_band_index = up_states.index
 
         bulk_up_states = bulk_state_df.loc[bulk_state_df["spin"] == "1"]
-        print("B**"*20)
+        print("B**up_states"*20)
         print(bulk_up_states)
         bulk_up_dist_from_vbm = bulk_up_states["energy"] - self.vbm #(self.vbm + 
         # self.vacuum_locpot)
@@ -662,12 +662,16 @@ class NewDetermineDefectState:
         dn_states = state_df.loc[(state_df["spin"] == "-1") &
                                  (state_df["energy"] > self.vbm) &
                                  (state_df["energy"] < self.cbm)]
+        print("D**dn_states"*20)
+        print(dn_states)
         dn_dist_from_vbm = dn_states["energy"] - self.vbm #(self.vbm + self.vacuum_locpot)
         dn_dist_from_vbm = dn_dist_from_vbm.round(3)
         dn_occ = dn_states.loc[:, "n_occ_e"]
         dn_band_index = dn_states.index
 
         bulk_dn_states = bulk_state_df.loc[bulk_state_df["spin"] == "-1"]
+        print("B**db_states"*20)
+        print(bulk_dn_states)
         bulk_dn_dist_from_vbm = bulk_dn_states["energy"] - self.vbm #(self.vbm + 
         # self.vacuum_locpot)
         bulk_dn_dist_from_vbm = bulk_dn_dist_from_vbm.round(3)
