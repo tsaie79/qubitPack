@@ -21,7 +21,8 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
         energy = trunc(energy, 3)
         print(energy)
         if is_vacuum_aligment:
-            energy -= trunc(determine_defect_state_obj.vacuum_locpot, 3)
+            energy -= determine_defect_state_obj.vacuum_locpot
+            energy = trunc(energy, 3)
             vbm = trunc(determine_defect_state_obj.vbm, 3) - trunc(determine_defect_state_obj.vacuum_locpot, 3)
             cbm = trunc(determine_defect_state_obj.cbm, 3) - trunc(determine_defect_state_obj.vacuum_locpot, 3)
         else:
@@ -37,8 +38,15 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
         print(levels)
     eng = EnergyLevel(levels, top_texts=top_texts)
     fig = eng.plotting(vbm, cbm)
-    levels.update({"vbm": vbm,  "cbm": cbm, "up_deg": [int(i.split("/")[1]) for i in top_texts["1"]], 
-                   "dn_deg": [int(i.split("/")[1]) for i in top_texts["-1"]]})
+    levels.update(
+        {
+            "level_vbm": vbm,  "level_cbm": cbm,
+            "level_up_deg": tuple([int(i.split("/")[1]) for i in top_texts["1"]]),
+            "leve_dn_deg": tuple([int(i.split("/")[1]) for i in top_texts["-1"]]),
+            "level_up_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["1"]]),
+            "level_dn_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["-1"]])
+        }
+    )
 
     if determine_defect_state_obj.save_fig_path:
         fig.savefig(os.path.join(determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
@@ -323,7 +331,6 @@ def new_get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot="all", cli
     print("$$$"*20)
     print(top_texts)
     levels, eigen_plot = get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
-
     print("**"*20)
     print(d_df)
     e = {}

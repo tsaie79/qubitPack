@@ -1,4 +1,4 @@
-from pymatgen.electronic_structure.core import Spin
+from pymatgen.electronic_structure.core import Spin, Orbital
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Poscar, Structure
 from pymatgen.analysis.local_env import CrystalNN
@@ -535,14 +535,14 @@ def get_band_edges_characters(bs):
         cbm = bs.get_cbm()
         vbm = bs.get_vbm()
         data = {}
-        data["cbm"] = {"up": {}, "down": {}}
-        data["vbm"] = {"up": {}, "down": {}}
+        # data["cbm"] = {"up": {}, "down": {}}
+        # data["vbm"] = {"up": {}, "down": {}}
         for name, band_edge in zip(["vbm", "cbm"], [vbm, cbm]):
             band_index = band_edge["band_index"]
             if band_index.get(Spin.up) != band_index.get(Spin.down):
-                data[name].update({"is_up_dn_band_idx_equal": False})
+                data.update({"{}_is_up_dn_band_idx_equal".format(name): False})
             else:
-                data[name].update({"is_up_dn_band_idx_equal": True})
+                data.update({"{}_is_up_dn_band_idx_equal".format(name): True})
 
             projections = band_edge["projections"]
             for spin, band_idx in band_index.items():
@@ -550,20 +550,39 @@ def get_band_edges_characters(bs):
                     tot_proj_on_element = projections[spin].sum(axis=0)
                     max_tot_proj_element_idx = tot_proj_on_element.argmax()
                     max_tot_proj = tot_proj_on_element[max_tot_proj_element_idx]
+                
+                    max_proj_orbital = Orbital(projections[spin][:, max_tot_proj_element_idx].argmax()).name
 
-                    data[name][spin.name].update(
+                    data.update(
                         {
-                            "max_element_idx": max_tot_proj_element_idx,
-                            "max_element": bs.structure[max_tot_proj_element_idx].species_string,
-                            "max_proj": max_tot_proj,
-                            "proj_on_element": tot_proj_on_element,
+                            "{}_{}_max_el_idx".format(name, spin.name): max_tot_proj_element_idx,
+                            "{}_{}_max_element".format(name, spin.name): bs.structure[
+                                max_tot_proj_element_idx].species_string,
+                            "{}_{}_max_proj".format(name, spin.name): max_tot_proj,
+                            "{}_{}_proj_on_element".format(name, spin.name): tuple(tot_proj_on_element),
+                            "{}_{}_max_proj_orbital".format(name, spin.name): max_proj_orbital,
                         }
                     )
+                    for ion_idx, site in enumerate(bs.structure.sites):
+                        data.update(
+                            {
+                                "{}_{}_orbital_proj".format(name, spin.name): tuple(projections[spin][:, ion_idx])
+                            }
+                        )
+
+                    # data[name][spin.name].update(
+                    #     {
+                    #         "max_element_idx": max_tot_proj_element_idx,
+                    #         "max_element": bs.structure[max_tot_proj_element_idx].species_string,
+                    #         "max_proj": max_tot_proj,
+                    #         "proj_on_element": tot_proj_on_element,
+                    #     }
+                    # )
         print(data)
         spins = [(spin_vbm, spin_cbm) for spin_vbm in [Spin.up.name, Spin.down.name] for spin_cbm in [Spin.up.name, Spin.down.name]]
         for spin in spins:
-            if data["vbm"][spin[0]].get("max_element_idx", "Yes") == \
-                    data["cbm"][spin[1]].get("max_element_idx", "No"):
+            if data.get("vbm_{}_max_element_idx".format(spin[0]), "Yes") == \
+                    data.get("cbm_{}max_element_idx".format(spin[1]), "No"):
                 data["is_vbm_cbm_from_same_element"] = True
                 break
             else:
