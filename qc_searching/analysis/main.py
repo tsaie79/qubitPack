@@ -42,7 +42,7 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
         {
             "level_vbm": vbm,  "level_cbm": cbm,
             "level_up_deg": tuple([int(i.split("/")[1]) for i in top_texts["1"]]),
-            "leve_dn_deg": tuple([int(i.split("/")[1]) for i in top_texts["-1"]]),
+            "level_dn_deg": tuple([int(i.split("/")[1]) for i in top_texts["-1"]]),
             "level_up_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["1"]]),
             "level_dn_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["-1"]])
         }

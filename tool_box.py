@@ -550,25 +550,22 @@ def get_band_edges_characters(bs):
                     tot_proj_on_element = projections[spin].sum(axis=0)
                     max_tot_proj_element_idx = tot_proj_on_element.argmax()
                     max_tot_proj = tot_proj_on_element[max_tot_proj_element_idx]
-                
-                    max_proj_orbital = Orbital(projections[spin][:, max_tot_proj_element_idx].argmax()).name
+
+                    max_proj_orbital_id = projections[spin][:, max_tot_proj_element_idx].argmax()
+                    max_proj_orbital = Orbital(max_proj_orbital_id).name
 
                     data.update(
                         {
                             "{}_{}_max_el_idx".format(name, spin.name): max_tot_proj_element_idx,
-                            "{}_{}_max_element".format(name, spin.name): bs.structure[
+                            "{}_{}_max_el".format(name, spin.name): bs.structure[
                                 max_tot_proj_element_idx].species_string,
                             "{}_{}_max_proj".format(name, spin.name): max_tot_proj,
-                            "{}_{}_proj_on_element".format(name, spin.name): tuple(tot_proj_on_element),
+                            "{}_{}_proj_on_el".format(name, spin.name): tuple(tot_proj_on_element),
                             "{}_{}_max_proj_orbital".format(name, spin.name): max_proj_orbital,
-                        }
-                    )
-                    for ion_idx, site in enumerate(bs.structure.sites):
-                        data.update(
-                            {
-                                "{}_{}_orbital_proj".format(name, spin.name): tuple(projections[spin][:, ion_idx])
-                            }
-                        )
+                            "{}_{}_orbital_proj_on_el".format(name, spin.name): tuple(projections[spin][
+                                                                                 max_proj_orbital_id, :])
+                        })
+
 
                     # data[name][spin.name].update(
                     #     {
