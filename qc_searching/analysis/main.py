@@ -23,8 +23,8 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
         if is_vacuum_aligment:
             energy -= determine_defect_state_obj.vacuum_locpot
             energy = trunc(energy, 3)
-            vbm = trunc(determine_defect_state_obj.vbm, 3) - trunc(determine_defect_state_obj.vacuum_locpot, 3)
-            cbm = trunc(determine_defect_state_obj.cbm, 3) - trunc(determine_defect_state_obj.vacuum_locpot, 3)
+            vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
+            cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
         else:
             vbm = trunc(determine_defect_state_obj.vbm, 3)
             cbm = trunc(determine_defect_state_obj.cbm, 3)
@@ -41,10 +41,11 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
     levels.update(
         {
             "level_vbm": vbm,  "level_cbm": cbm,
-            "level_up_deg": tuple([int(i.split("/")[1]) for i in top_texts["1"]]),
-            "level_dn_deg": tuple([int(i.split("/")[1]) for i in top_texts["-1"]]),
-            "level_up_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["1"]]),
-            "level_dn_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["-1"]])
+            "level_up_deg": tuple([int(i.split("/")[1]) for i in top_texts["1"]]) if top_texts else None,
+            "level_dn_deg": tuple([int(i.split("/")[1]) for i in top_texts["-1"]]) if top_texts else None,
+            "level_up_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["1"]]) if top_texts else 
+            None,
+            "level_dn_ir": tuple(["".join(i.split("/")[-1].split(" ")) for i in top_texts["-1"]]) if top_texts else None
         }
     )
 
@@ -127,7 +128,7 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboa
         if ir_entry:
             top_texts = {"1": [], "-1": []}
             for spin in ["1", "-1"]:
-                ir_info = tot.loc[tot["spin"]==spin]
+                ir_info = tot.loc[tot["spin"] == spin]
                 for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"],
                                                              ir_info["band_degeneracy"],
                                                              ir_info["band_ir"]):
@@ -135,7 +136,7 @@ def get_defect_state(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboa
                     top_texts[spin].append(info)
                 top_texts[spin] = list(dict.fromkeys(top_texts[spin]))
 
-    print(top_texts)
+    print("top_texts:{}".format(top_texts))
     levels, eigen_plot = get_eigen_plot(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
 
     print("**"*20)

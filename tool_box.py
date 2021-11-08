@@ -178,24 +178,35 @@ class GenDefect:
         if (defect_type[0] == "substitutions") or (defect_type[0] == "vacancies"):
             self.defect_entry = self.defects[self.defect_type[0]][self.defect_type[1]]
             self.defect_st = self.defect_entry["supercell"]["structure"].get_sorted_structure()
-            self.defect_site_in_bulk = self.defect_entry["bulk_supercell_site"]
+
+            self.defect_site_in_bulk = self.defect_entry["bulk_supercell_site"].to_unit_cell()
             self.defect_site_in_bulk_index = None
             self.NN = None
 
             if defect_type[0] == "substitutions":
-                try:
-                    self.defect_site_in_bulk_index = self.defect_st.index(self.defect_site_in_bulk)
-                except ValueError:
-                    self.defect_site_in_bulk_index = self.defect_st.index(self.defect_site_in_bulk.to_unit_cell())
+                print(self.defect_st, self.defect_site_in_bulk)
+                # self.defect_site_in_bulk_index = self.defect_st.index(self.defect_site_in_bulk)
+                for idx, site in enumerate(self.defect_st.sites):
+                    if site.is_periodic_image(self.defect_site_in_bulk):
+                        self.defect_site_in_bulk_index = idx
+                # try:
+                #     self.defect_site_in_bulk_index = self.defect_st.index(self.defect_site_in_bulk)
+                #     print(self.defect_site_in_bulk, self.defect_site_in_bulk.to_unit_cell())
+                # except ValueError:
+                #     print(self.defect_site_in_bulk.frac_coords, self.defect_site_in_bulk.to_unit_cell().frac_coords)
+                #     self.defect_site_in_bulk_index = self.defect_st.index(self.defect_site_in_bulk.to_unit_cell())
                 self.NN = [self.defect_st.index(self.defect_st[nn['site_index']])
                            for nn in CrystalNN().get_nn_info(self.defect_st, self.defect_site_in_bulk_index)]
                 self.pmg_obj = Substitution(self.orig_st, self.defect_entry["unique_site"])
 
             elif defect_type[0] == "vacancies":
-                try:
-                    self.defect_site_in_bulk_index = self.bulk_st.index(self.defect_site_in_bulk)
-                except ValueError:
-                    self.defect_site_in_bulk_index = self.bulk_st.index(self.defect_site_in_bulk.to_unit_cell())
+                for idx, site in enumerate(self.bulk_st.sites):
+                    if site.is_periodic_image(self.defect_site_in_bulk):
+                        self.defect_site_in_bulk_index = idx
+                # try:
+                #     self.defect_site_in_bulk_index = self.bulk_st.index(self.defect_site_in_bulk)
+                # except ValueError:
+                #     self.defect_site_in_bulk_index = self.bulk_st.index(self.defect_site_in_bulk.to_unit_cell())
                 self.NN = [self.defect_st.index(self.bulk_st[nn['site_index']])
                            for nn in CrystalNN().get_nn_info(self.bulk_st, self.defect_site_in_bulk_index)]
                 self.pmg_obj = Vacancy(self.orig_st, self.defect_entry["unique_site"])
