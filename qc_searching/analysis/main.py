@@ -19,7 +19,7 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
     for spin in ["1", "-1"]:
         energy = tot.loc[tot["spin"] == spin]["energy"]
         diff_band = np.diff(energy)
-        delete = [energy.index[i] for i in np.where(abs(diff_band) <= 1.1e-3)[0]]
+        delete = [energy.index[i] for i in np.where(abs(diff_band) <= 2.0e-3)[0]]
         print("remove_possible_degenerate_band_index:{}".format(delete))
         energy = energy.drop(delete)
         
