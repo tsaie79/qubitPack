@@ -18,21 +18,28 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
     vbm, cbm = None, None
     for spin in ["1", "-1"]:
         energy = tot.loc[tot["spin"] == spin]["energy"]
-        diff_band = np.diff(energy)
-        delete = [energy.index[i] for i in np.where(abs(diff_band) <= 2.0e-3)[0]]
-        print("remove_possible_degenerate_band_index:{}".format(delete))
-        energy = energy.drop(delete)
+        
+        def drop_one_of_degenerate_levels(level_df, diff_en_threshold=2e-3):
+            diff_band = np.diff(level_df)
+            delete_band_indices = [level_df.index[i] for i in np.where(abs(diff_band) <= diff_en_threshold)[0]]
+            print("remove_possible_degenerate_band_index:{}".format(delete_band_indices))
+            level_df = level_df.drop(delete_band_indices)
+            return level_df
         
         if is_vacuum_aligment:
             energy -= determine_defect_state_obj.vacuum_locpot
             energy = trunc(energy, 3)
             print(energy)
+            energy = drop_one_of_degenerate_levels(energy, 4e-3)
             vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
             cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
         else:
             energy = trunc(energy, 3)
+            print(energy)
+            energy = drop_one_of_degenerate_levels(energy, 4e-3)
             vbm = trunc(determine_defect_state_obj.vbm, 3)
             cbm = trunc(determine_defect_state_obj.cbm, 3)
+            
         occup = []
         for i in tot.loc[tot["spin"] == spin]["n_occ_e"]:
             if i > 0.4:
