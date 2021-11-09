@@ -18,18 +18,23 @@ def get_eigen_plot(tot, determine_defect_state_obj, top_texts, is_vacuum_aligmen
     vbm, cbm = None, None
     for spin in ["1", "-1"]:
         energy = tot.loc[tot["spin"] == spin]["energy"]
-        energy = trunc(energy, 3)
-        print(energy)
+        diff_band = np.diff(energy)
+        delete = [energy.index[i] for i in np.where(abs(diff_band) <= 1.1e-3)[0]]
+        print("remove_possible_degenerate_band_index:{}".format(delete))
+        energy = energy.drop(delete)
+        
         if is_vacuum_aligment:
             energy -= determine_defect_state_obj.vacuum_locpot
             energy = trunc(energy, 3)
+            print(energy)
             vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
             cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
         else:
+            energy = trunc(energy, 3)
             vbm = trunc(determine_defect_state_obj.vbm, 3)
             cbm = trunc(determine_defect_state_obj.cbm, 3)
         occup = []
-        for i in tot.loc[tot["spin"]==spin]["n_occ_e"]:
+        for i in tot.loc[tot["spin"] == spin]["n_occ_e"]:
             if i > 0.4:
                 occup.append(True)
             else:
