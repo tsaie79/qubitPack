@@ -74,7 +74,7 @@ def get_eigen_plot_v1(tot, determine_defect_state_obj, top_texts, is_vacuum_alig
     return levels, fig
 
 
-def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False):
+def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False, edge_tol=(0.25, 0.25)):
     vbm, cbm = None, None
 
     if is_vacuum_aligment:
@@ -195,11 +195,11 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False)
         # ax.text(-0.1, 1.05, "{}-{}".format(uid, host_taskid), size=30, transform=ax.transAxes)
         return fig
 
-    def plotting_v2(set_vbm, set_cbm, tot_df):
+    def plotting_v2(set_vbm, set_cbm, tot_df, edge_tol=edge_tol):
         from matplotlib.ticker import AutoMinorLocator
         # plt.style.use(['grid'])
         
-        in_gap_condition = (tot_df["energy"] <= cbm+0.25) & (tot_df["energy"] >= vbm-0.25)
+        in_gap_condition = (tot_df["energy"] >= vbm-edge_tol[0]) & (tot_df["energy"] <= cbm+edge_tol[1]) 
         up_condition = (tot_df["spin"] == "1") & in_gap_condition
         dn_condition = (tot_df["spin"] == "-1") & in_gap_condition
         
@@ -385,13 +385,15 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     tot = pd.concat([tot, ir_info_sheet], axis=1)
     return tot, ir_entry
 
-def get_in_gap_levels(tot_df):
+def get_in_gap_levels(tot_df, edge_tol):
     in_gap_levels = {}
-    up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] > -0.25) & (tot_df["dist_from_cbm"] < 0.25)
+    up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
+                                                                                         edge_tol[1])
     up_levels = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
                                           "band_degeneracy"]]
 
-    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] > -0.25) & (tot_df["dist_from_cbm"] < 0.25)
+    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
+                                                                                         edge_tol[1])
     dn_levels = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
                                            "band_degeneracy"]]
 
@@ -417,25 +419,17 @@ def get_in_gap_levels(tot_df):
     return in_gap_levels
 
 
-def get_in_gap_transition(tot_df):
+def get_in_gap_transition(tot_df, edge_tol):
     # well-defined in-gap state: energetic difference of occupied states and vbm > 0.1   
-    up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] > -0.25) & (tot_df["dist_from_cbm"] < 0.25)
+    up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
+                                                                                           edge_tol[1])
     up_tran_df = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir", 
                                            "band_degeneracy"]]
-    # up_energy = tot_df.loc[up_condition, "energy"]
-    # occ_up_df = tot_df.loc[up_condition, "n_occ_e"]
-    # up_ir_df = tot_df.loc[up_condition, "band_ir"]
-    # up_deg_df = tot_df.loc[up_condition, "band_degeneracy"]
-    # up_band_index_df = tot_df.loc[up_condition, "band_index"]
 
-    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] > -0.25) & (tot_df["dist_from_cbm"] < 0.25)
+    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
+                                                                                          edge_tol[1])
     dn_tran_df = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
                                            "band_degeneracy"]]
-    # dn_energy = tot_df.loc[dn_condition, "energy"]
-    # occ_dn_df = tot_df.loc[dn_condition, "n_occ_e"]
-    # dn_ir_df = tot_df.loc[dn_condition, "band_ir"]
-    # dn_deg_df = tot_df.loc[dn_condition, "band_degeneracy"]
-    # dn_band_index_df = tot_df.loc[dn_condition, "band_index"]
     
     transition_dict = {}
     
@@ -929,7 +923,7 @@ def get_defect_state_v2(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
 def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
                         threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None,
-                        is_vacuum_aligment_on_plot=False) -> object:
+                        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25)) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
     "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
@@ -971,10 +965,10 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
     print("$$$"*20)
     print("top_texts:{}".format(top_texts))
-    levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot)
+    levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot, edge_tol=edge_tol)
 
-    d_df = get_in_gap_transition(tot)
-    in_gap_levels = get_in_gap_levels(tot)
+    d_df = get_in_gap_transition(tot, edge_tol)
+    in_gap_levels = get_in_gap_levels(tot, edge_tol)
     # d_df = pd.DataFrame([e]).transpose()
     print(tot)
 
