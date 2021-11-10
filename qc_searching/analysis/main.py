@@ -197,7 +197,7 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False)
 
     def plotting_v2(set_vbm, set_cbm, tot_df):
         from matplotlib.ticker import AutoMinorLocator
-        plt.style.use(['grid'])
+        # plt.style.use(['grid'])
         
         in_gap_condition = (tot_df["energy"] <= cbm+0.25) & (tot_df["energy"] >= vbm-0.25)
         up_condition = (tot_df["spin"] == "1") & in_gap_condition
