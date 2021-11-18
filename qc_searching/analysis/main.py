@@ -99,8 +99,8 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         up_deg = tot_df.loc[tot_df["spin"] == "1", "band_degeneracy"]
         dn_deg = tot_df.loc[tot_df["spin"] == "-1", "band_degeneracy"]
 
-        up_occ = tot_df.loc[tot_df["spin"] == "1", "occupied"]
-        dn_occ = tot_df.loc[tot_df["spin"] == "-1", "occupied"]
+        up_occ = tot_df.loc[tot_df["spin"] == "1", "n_occ_e"]
+        dn_occ = tot_df.loc[tot_df["spin"] == "-1", "n_occ_e"]
 
         up_ir = tot_df.loc[tot_df["spin"] == "1", "band_ir"]
         dn_ir = tot_df.loc[tot_df["spin"] == "-1", "band_ir"]
@@ -209,8 +209,8 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         up_deg = tot_df.loc[up_condition, "band_degeneracy"]
         dn_deg = tot_df.loc[dn_condition, "band_degeneracy"]
 
-        up_occ = tot_df.loc[up_condition, "occupied"]
-        dn_occ = tot_df.loc[dn_condition, "occupied"]
+        up_occ = tot_df.loc[up_condition, "n_occ_e"]
+        dn_occ = tot_df.loc[dn_condition, "n_occ_e"]
 
         up_ir = tot_df.loc[up_condition, "band_ir"]
         dn_ir = tot_df.loc[dn_condition, "band_ir"]
@@ -247,8 +247,12 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
                 color = "black"
 
             if occupied:
-                ax.hlines(level, 0, 0.5, colors=color)
-                ax.text(0.5, level, "{}".format(band_id), fontsize=12)
+                if round(occupied, 1) == 0.5: 
+                    ax.hlines(level, 0, 0.5, colors=color)
+                    ax.text(0.5, level, "{}%".format(band_id), fontsize=12)
+                else:
+                    ax.hlines(level, 0, 0.5, colors=color)
+                    ax.text(0.5, level, "{}".format(band_id), fontsize=12)
             else:
                 ax.hlines(level, 0, 0.5, colors=color)
                 ax.text(0.5, level, "{}*".format(band_id), fontsize=12)
@@ -275,8 +279,12 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
                 color = "black"
 
             if occupied:
-                ax.hlines(level, 1, 1.5, colors=color)
-                ax.text(0.9, level, "{}".format(band_id), fontsize=12)
+                if round(occupied, 1) == 0.5:
+                    ax.hlines(level, 1, 1.5, colors=color)
+                    ax.text(0.9, level, "{}%".format(band_id), fontsize=12)
+                else:
+                    ax.hlines(level, 1, 1.5, colors=color)
+                    ax.text(0.9, level, "{}".format(band_id), fontsize=12)
             else:
                 ax.hlines(level, 1, 1.5, colors=color)
                 ax.text(0.9, level, "{}*".format(band_id), fontsize=12)
@@ -939,10 +947,14 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
         threshold=threshold,
         select_bands=None
     )
+    print("%%"* 20)
+    print(tot.columns)
     top_texts = None
     top_texts_for_d_df = None
     if ir_db and ir_entry_filter:
         tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+        print("%%"* 20)
+        print(tot.columns)
         if ir_entry:
             top_texts = {"1": [], "-1": []}
             top_texts_for_d_df = {"1": [], "-1": []}
@@ -1017,13 +1029,14 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
             orbital_dos_plt.show()
         if plot == "all":
+            eig_plt = eigen_plot
+            eig_plt.show()
             tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
             tdos_plt.show()
             site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
             site_dos_plt.show()
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
             orbital_dos_plt.show()
-            eigen_plot.show()
 
 
         if path_save_fig:

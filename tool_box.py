@@ -589,11 +589,12 @@ def get_band_edges_characters(bs):
         print(data)
         spins = [(spin_vbm, spin_cbm) for spin_vbm in [Spin.up.name, Spin.down.name] for spin_cbm in [Spin.up.name, Spin.down.name]]
         for spin in spins:
-            if data.get("vbm_{}_max_element_idx".format(spin[0]), "Yes") == \
-                    data.get("cbm_{}max_element_idx".format(spin[1]), "No"):
+            if data.get("vbm_{}_max_el".format(spin[0]), "Yes") == data.get("cbm_{}_max_el".format(spin[1]), "No"):
+                print("vbm == cbm")
                 data["is_vbm_cbm_from_same_element"] = True
                 break
             else:
+                print("vbm != cbm")
                 data["is_vbm_cbm_from_same_element"] = False
 
         return data
