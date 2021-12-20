@@ -180,10 +180,4 @@ class DosPlotDB:
 
 
 if __name__ == "__main__":
-    # os.chdir("/home/tug03990/work/research/hBN/hbnDefectStates/defect/SCAN/")
-    # for i in ["nupdown2"]:
-    #     ds = DosPlot(vasprun=i+"/dos/gamma/vasprun.xml", defect_type="cation", name="Monk_SCAN_"+i)
-    #     ds.total_dos.show()
-    #     ds.band_gap()
-
-    main()
+    pass

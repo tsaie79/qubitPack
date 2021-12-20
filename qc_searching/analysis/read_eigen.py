@@ -167,16 +167,17 @@ class DetermineDefectState:
                 self.entry_host = db_host.collection.find_one({"task_id": int(self.entry["pc_from"].split("/")[-1])})
             else:
                 self.entry_host = db_host.collection.find_one({"task_id": locpot[1]})
+
             self.vacuum_locpot_host = max(self.entry_host["calcs_reversed"][0]["output"]["locpot"]["2"])
-            self.cbm = self.entry_host["output"]["cbm"] - self.vacuum_locpot_host + locpot[4] + locpot[2]
-            self.vbm = self.entry_host["output"]["vbm"] - self.vacuum_locpot_host + locpot[3] + locpot[2]
+            self.cbm = self.entry_host["output"]["cbm"] - self.vacuum_locpot_host
+            self.vbm = self.entry_host["output"]["vbm"] - self.vacuum_locpot_host
+            self.search_range = (self.vbm + locpot[3] + locpot[2], self.cbm + locpot[4] + locpot[2])
       
-            efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot_host 
+            efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"]
             self.efermi = efermi_to_defect_vac
         
         else:
             print("No vacuum alignment!")
-            self.vacuum_locpot = 0
             self.cbm = cbm
             self.vbm = vbm
             self.efermi = self.entry["calcs_reversed"][0]["output"]["efermi"]
@@ -279,7 +280,7 @@ class DetermineDefectState:
         for spin in spins:
             band_info = {}
             try:
-                eigenvals.update(get_eigenvals(spin, self.eigenvals, energy_range=[self.vbm, self.cbm]))
+                eigenvals.update(get_eigenvals(spin, self.eigenvals, energy_range=self.search_range))
                 band_detail, proj = get_promising_state(spin, eigenvals)
                 band_proj[spin] = proj
                 band_info.update(band_detail)

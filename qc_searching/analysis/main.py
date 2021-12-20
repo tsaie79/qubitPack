@@ -35,8 +35,8 @@ def get_eigen_plot_v1(tot, determine_defect_state_obj, top_texts, is_vacuum_alig
             energy = trunc(energy, 3)
             print(energy)
             energy = drop_one_of_degenerate_levels(energy)
-            vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
-            cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
+            vbm = trunc(determine_defect_state_obj.vbm, 3)
+            cbm = trunc(determine_defect_state_obj.cbm, 3)
         else:
             energy = trunc(energy, 3)
             print(energy)
@@ -1058,27 +1058,22 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 if __name__ == '__main__':
     from qubitPack.tool_box import get_db
     # db = get_db("owls", 'mx2_antisite_basic_aexx0.25_final')
-    db = get_db("single_photon_emitter", "standard_defect")
-    # db = get_db("antisiteQubit", "move_z")
+    defect_db = get_db("single_photon_emitter", "soc_standard_defect")
+    host_db = get_db("single_photon_emitter", "soc_pc")
 
-    c2db = get_db("2dMat_from_cmr_fysik", "2dMaterial_v1", user="adminUser", password="qiminyan")
-    tot, proj, d_df = get_defect_state(
-        db,
-        {"task_id": 266},
-        1, -5,
+    tot, proj, d_df, levels = get_defect_state_v1(
+        defect_db,
+        {"task_id": 659},
+        -6.5,
+        -3.5,
         None,
-        True,
-        "proj",
-        None, #(get_db("antisiteQubit", "W_S_Ef"), 312, 0.),
-        0.2,
-        locpot_c2db=None #(c2db, "WTe2-MoS2-NM", 0)
+        "all",
+        locpot=(host_db, 634, 0, -0.3, -0.12),
+        #(get_db("antisiteQubit", "W_S_Ef"), 312, 0.), 591, 593:WS2, 592, 594:WSe2 630:WTe2, 611, :MoS2, 610,
+        # :MoSe2,
+        # 631:MoTe2
+        threshold=0.01,
+        locpot_c2db=None,
+        is_vacuum_aligment_on_plot=True
     )
-    # proj = proj.loc[[317, 325, 326], [5, 6, 0, 25, "orbital", "spin", "adjacent", "antisite"]]
-    # proj = proj.loc[(proj["spin"] == "1") & (proj["orbital"] == "dz2")]
-    # proj = proj.loc[(proj["spin"] == "1") & (proj["orbital"] == "dxy") & (proj.index < 328) & (315 < proj.index)]
-    # proj.sort_values(["adjacent", 25], inplace=True, ascending=False)
-    # proj = proj[25]
-    # proj = proj.round(3)
-    # print(proj)
-    # proj.loc[proj["spin"] == "1", :].to_clipboard("\t")
 
