@@ -490,6 +490,27 @@ def get_lowest_unocc_band_idx(task_id, db_obj, nbands, prevent_JT=True, second_e
         print("minor_spin: {}, occ:{}".format(minor_spin, occu_configs[minor_spin]))
         return maj_spin, occu_configs
 
+def get_lowest_unocc_band_idx_v2(task_id, db_obj, nbands):
+
+    eig = db_obj.get_eigenvals(task_id)
+    spins = list(eig.keys())
+
+    lowest_unocc_band_idx = []
+    for spin in spins:
+        band_idx = 0
+        while eig[spin][0][band_idx][1] == 1:
+            band_idx += 1
+        lowest_unocc_band_idx.append(band_idx+1)
+    lowest_unocc_band_idx = dict(zip(spins, lowest_unocc_band_idx))
+
+    occu_configs = {}
+    up_low_band_idx = lowest_unocc_band_idx["1"]
+    dn_low_band_idx = lowest_unocc_band_idx["-1"]
+    occu_configs["1"] = "{}*1 {}*0".format(up_low_band_idx-1, nbands-up_low_band_idx+1)
+    occu_configs["-1"] = "{}*1 {}*0".format(dn_low_band_idx-1, nbands-dn_low_band_idx+1)
+    print("up_occ: {}, occ:{}".format(occu_configs["1"], occu_configs["-1"]))
+    return occu_configs[1], occu_configs[-1]
+
 def phonopy_structure(orig_st):
     from subprocess import call, check_output, Popen
     import shutil

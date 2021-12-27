@@ -336,7 +336,9 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
             "level_up_occ": tuple(tot.loc[tot["spin"] == "1", "n_occ_e"]),
             "level_dn_occ": tuple(tot.loc[tot["spin"] == "-1", "n_occ_e"]),
             "level_up_id": tuple(tot.loc[tot["spin"] == "1", "band_id"]),
+            "level_up_index": tuple(tot.loc[tot["spin"] == "1", "band_index"]+1),
             "level_dn_id": tuple(tot.loc[tot["spin"] == "-1", "band_id"]),
+            "level_dn_index": tuple(tot.loc[tot["spin"] == "-1", "band_index"]+1),
         }
     )
     print("%%%%"*20)
@@ -398,12 +400,12 @@ def get_in_gap_levels(tot_df, edge_tol):
     up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
                                                                                          edge_tol[1])
     up_levels = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
-                                          "band_degeneracy"]]
+                                          "band_degeneracy", "band_index"]]
 
     dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
                                                                                          edge_tol[1])
     dn_levels = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
-                                           "band_degeneracy"]]
+                                           "band_degeneracy", "band_index"]]
 
     in_gap_levels.update(
         {
@@ -411,7 +413,8 @@ def get_in_gap_levels(tot_df, edge_tol):
             "up_in_gap_ir": tuple(up_levels["band_ir"]),
             "up_in_gap_occ": tuple(up_levels["n_occ_e"]),
             "up_in_gap_deg": tuple(up_levels["band_degeneracy"]),
-            "up_in_gap_band_id": tuple(up_levels["band_id"])
+            "up_in_gap_band_id": tuple(up_levels["band_id"]),
+            "up_in_gap_band_index": tuple(up_levels["band_index"]+1)
         }
     )
 
@@ -421,7 +424,8 @@ def get_in_gap_levels(tot_df, edge_tol):
             "dn_in_gap_ir": tuple(dn_levels["band_ir"]),
             "dn_in_gap_occ": tuple(dn_levels["n_occ_e"]),
             "dn_in_gap_deg": tuple(dn_levels["band_degeneracy"]),
-            "dn_in_gap_band_id": tuple(dn_levels["band_id"])
+            "dn_in_gap_band_id": tuple(dn_levels["band_id"]),
+            "dn_in_gap_band_index": tuple(dn_levels["band_index"]+1)
         }
     )
     return in_gap_levels
@@ -432,12 +436,12 @@ def get_in_gap_transition(tot_df, edge_tol):
     up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
                                                                                            edge_tol[1])
     up_tran_df = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir", 
-                                           "band_degeneracy"]]
+                                           "band_degeneracy", "band_index"]]
 
     dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
                                                                                           edge_tol[1])
     dn_tran_df = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
-                                           "band_degeneracy"]]
+                                           "band_degeneracy", "band_index"]]
     
     transition_dict = {}
     
@@ -475,32 +479,60 @@ def get_in_gap_transition(tot_df, edge_tol):
                         "up_tran_ir": tuple(up_tran_df["band_ir"]),
                         "up_tran_occ": tuple(up_tran_df["n_occ_e"]),
                         "up_tran_deg": tuple(up_tran_df["band_degeneracy"]),
-                        "up_tran_band_id": tuple(up_tran_df["band_id"])
+                        "up_tran_band_id": tuple(up_tran_df["band_id"]),
+                        "up_tran_band_index": tuple(up_tran_df["band_index"]+1),
+                        
+                        "up_tran_lumo_homo_energy": (round(up_tran_df["dist_from_vbm"].iloc[idx], 3),
+                                                     round(up_tran_df["dist_from_vbm"].iloc[idx+1], 3)),
+                        "up_tran_lumo_homo_band_id": (up_tran_df["band_id"].iloc[idx],
+                                                      up_tran_df["band_id"].iloc[idx+1]),
+                        "up_tran_lumo_homo_band_index": (up_tran_df["band_index"].iloc[idx]+1,
+                                                         up_tran_df["band_index"].iloc[idx+1]+1),
+                        "up_tran_lumo_homo_deg": (up_tran_df["band_degeneracy"].iloc[idx],
+                                                  up_tran_df["band_degeneracy"].iloc[idx+1]),
+                        "up_tran_lumo_homo_ir": (up_tran_df["band_ir"].iloc[idx], up_tran_df["band_ir"].iloc[idx+1]),
                     }
                 )
                 break
             else:
                 transition_dict.update({"up_tran_from_vbm": (), 
-                                        "up_tran_en": 0,
-                                        "up_tran_bottom": 0, 
-                                        "up_tran_top": 0,
+                                        "up_tran_en": None, # was 0,
+                                        
+                                        "up_tran_bottom": None, # was 0 
+                                        "up_tran_top": None,  # was 0 
+                                        
                                         "up_tran_ir": (),
                                         "up_tran_occ": (),
                                         "up_tran_deg": (),
                                         "up_tran_band_id": (),
-                                        "up_tran_level": ()
+                                        "up_tran_level": (),
+                                        "up_tran_band_index": (),
+
+                                        "up_tran_lumo_homo_energy": (),
+                                        "up_tran_lumo_homo_band_id": (),
+                                        "up_tran_lumo_homo_band_index": (),
+                                        "up_tran_lumo_homo_deg": (),
+                                        "up_tran_lumo_homo_ir": (),
                                        })
     else:
         transition_dict.update({"up_tran_from_vbm": (),
-                                "up_tran_en": 0,
-                                "up_tran_bottom": 0,
-                                "up_tran_top": 0,
-                                "up_tran_ir": (),
+                                "up_tran_en": None, #was 0,
+                                
+                                "up_tran_bottom": None,# was 0 
+                                "up_tran_top": None, # was 0
+                                
                                 "up_tran_occ": (),
                                 "up_tran_deg": (),
                                 "up_tran_band_id": (),
-                                "up_tran_level": ()
-                               })
+                                "up_tran_level": (),
+                                "up_tran_band_index": (),
+
+                                "up_tran_lumo_homo_energy": (),
+                                "up_tran_lumo_homo_band_id": (),
+                                "up_tran_lumo_homo_band_index": (),
+                                "up_tran_lumo_homo_deg": (),
+                                "up_tran_lumo_homo_ir": (),
+                                })
 
     if not dn_tran_df["n_occ_e"].empty:
         dE_dns = -1*np.diff(dn_tran_df["dist_from_vbm"])
@@ -520,31 +552,60 @@ def get_in_gap_transition(tot_df, edge_tol):
                         "dn_tran_ir": tuple(dn_tran_df["band_ir"]),
                         "dn_tran_occ": tuple(dn_tran_df["n_occ_e"]),
                         "dn_tran_deg": tuple(dn_tran_df["band_degeneracy"]),
-                        "dn_tran_band_id": tuple(dn_tran_df["band_id"])
+                        "dn_tran_band_id": tuple(dn_tran_df["band_id"]),
+                        "dn_tran_band_index": tuple(dn_tran_df["band_index"]+1),
+
+                        "dn_tran_lumo_homo_energy": (round(dn_tran_df["dist_from_vbm"].iloc[idx], 3),
+                                                     round(dn_tran_df["dist_from_vbm"].iloc[idx+1], 3)),
+                        "dn_tran_lumo_homo_band_id": (dn_tran_df["band_id"].iloc[idx],
+                                                      dn_tran_df["band_id"].iloc[idx+1]),
+                        "dn_tran_lumo_homo_band_index": (dn_tran_df["band_index"].iloc[idx]+1,
+                                                         dn_tran_df["band_index"].iloc[idx+1]+1),
+                        "dn_tran_lumo_homo_deg": (dn_tran_df["band_degeneracy"].iloc[idx],
+                                                  dn_tran_df["band_degeneracy"].iloc[idx+1]),
+                        "dn_tran_lumo_homo_ir": (dn_tran_df["band_ir"].iloc[idx], dn_tran_df["band_ir"].iloc[idx+1]),
                     }
                 )
                 break
             else:
                 transition_dict.update({"dn_tran_from_vbm": (),
-                                        "dn_tran_en": 0,
-                                        "dn_tran_bottom": 0,
-                                        "dn_tran_top": 0,
+                                        "dn_tran_en": None, #was 0,
+                                        
+                                        "dn_tran_bottom": None, # was 0 
+                                        "dn_tran_top": None, # was 0 
+                                        
                                         "dn_tran_ir": (),
                                         "dn_tran_occ": (),
                                         "dn_tran_deg": (),
                                         "dn_tran_band_id": (),
-                                        "dn_tran_level": ()
+                                        "dn_tran_level": (),
+                                        "dn_tran_band_index": (),
+                                        
+                                        "dn_tran_lumo_homo_energy": (),
+                                        "dn_tran_lumo_homo_band_id": (),
+                                        "dn_tran_lumo_homo_band_index": (),
+                                        "dn_tran_lumo_homo_deg": (),
+                                        "dn_tran_lumo_homo_ir": (),
                                        })
     else:
         transition_dict.update({"dn_tran_from_vbm": (),
-                                "dn_tran_en": 0,
-                                "dn_tran_bottom": 0,
-                                "dn_tran_top": 0,
+                                "dn_tran_en": None, #was 0
+                                
+                                "dn_tran_bottom": None, # was 0 
+                                "dn_tran_top": None,  # was 0 
+                                
                                 "dn_tran_ir": (),
                                 "dn_tran_occ": (),
                                 "dn_tran_deg": (),
                                 "dn_tran_band_id": (),
-                                "dn_tran_level": ()
+                                "dn_tran_level": (),
+                                "dn_tran_band_index": (),
+
+                                "dn_tran_lumo_homo_energy": (),
+                                "dn_tran_lumo_homo_band_id": (),
+                                "dn_tran_lumo_homo_band_index": (),
+                                "dn_tran_lumo_homo_deg": (),
+                                "dn_tran_lumo_homo_ir": (),
                                })        
     print(transition_dict)
     transition_df = pd.DataFrame([transition_dict])
@@ -942,13 +1003,15 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
                                   locpot=locpot,
                                   locpot_c2db=locpot_c2db)
     perturbed_bandgap = can.cbm - can.vbm
+    # define defect states and bulk states
     tot, proj, bulk_tot, bulk_proj = can.get_candidates(
         0,
         threshold=threshold,
         select_bands=None
     )
-    print("%%"* 20)
-    print(tot.columns)
+    # print("checking!"*20, bulk_tot.loc[(bulk_tot["spin"] == "-1") & (bulk_tot.index>=209) & (bulk_tot.index<=216)])
+    # print("checking!"*20, tot.loc[(tot["spin"] == "-1") & (tot.index>=209) & (tot.index<=216)])
+
     top_texts = None
     top_texts_for_d_df = None
     if ir_db and ir_entry_filter:
@@ -1057,23 +1120,38 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
 if __name__ == '__main__':
     from qubitPack.tool_box import get_db
-    # db = get_db("owls", 'mx2_antisite_basic_aexx0.25_final')
-    defect_db = get_db("single_photon_emitter", "soc_standard_defect")
-    host_db = get_db("single_photon_emitter", "soc_pc")
 
-    tot, proj, d_df, levels = get_defect_state_v1(
+    from pymatgen import Structure
+    import os
+    from matplotlib import pyplot as plt
+
+    # SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
+    # SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
+
+    SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data", port=12347)
+    SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data", port=12347)
+
+    defect_db =SCAN2dDefect
+    ir_db = SCAN2dIR
+
+    defect_taskid = 368
+    defect = defect_db.collection.find_one({"task_id": defect_taskid})
+    level_info, levels, defect_levels = None, None, None
+    state = get_defect_state_v3(
         defect_db,
-        {"task_id": 659},
-        -6.5,
-        -3.5,
+        {"task_id": defect_taskid},
+        -15, 15,
         None,
+        False,
         "all",
-        locpot=(host_db, 634, 0, -0.3, -0.12),
-        #(get_db("antisiteQubit", "W_S_Ef"), 312, 0.), 591, 593:WS2, 592, 594:WSe2 630:WTe2, 611, :MoS2, 610,
-        # :MoSe2,
-        # 631:MoTe2
-        threshold=0.01,
-        locpot_c2db=None,
-        is_vacuum_aligment_on_plot=True
+        None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
+        0.5,  #0.2
+        locpot_c2db=None,  #(c2db, c2db_uid, 0)
+        is_vacuum_aligment_on_plot=True,
+        edge_tol=(0.5, 0.5),
+        ir_db=ir_db,
+        ir_entry_filter={"prev_fw_taskid": defect_taskid},
     )
-
+    tot, proj, d_df, levels, defect_levels = state
+    level_info = d_df.to_dict("records")[0]
+    plt.show()
