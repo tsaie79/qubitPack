@@ -508,7 +508,7 @@ def get_lowest_unocc_band_idx_v2(task_id, db_obj, nbands):
     dn_low_band_idx = lowest_unocc_band_idx["-1"]
     occu_configs["1"] = "{}*1 {}*0".format(up_low_band_idx-1, nbands-up_low_band_idx+1)
     occu_configs["-1"] = "{}*1 {}*0".format(dn_low_band_idx-1, nbands-dn_low_band_idx+1)
-    print("up_occ: {}, occ:{}".format(occu_configs["1"], occu_configs["-1"]))
+    print("up_no_excite_occ: {}, dn_no_excite_occ:{}".format(occu_configs["1"], occu_configs["-1"]))
     return occu_configs["1"], occu_configs["-1"]
 
 def phonopy_structure(orig_st):
