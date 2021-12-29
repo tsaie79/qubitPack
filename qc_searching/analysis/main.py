@@ -464,11 +464,15 @@ def get_in_gap_transition(tot_df, edge_tol):
     if not up_tran_df["n_occ_e"].empty:
         dE_ups = -1*np.diff(up_tran_df["dist_from_vbm"])
         for idx, dE_up in enumerate(dE_ups):
-            if (
-                    round(dE_up, 1) != 0 and
-                    round(up_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
-                    round(up_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
-            ):
+            # Use the max transition as condition
+            max_tran_index = np.argmax(dE_ups)
+            if idx == max_tran_index:
+            # Use the occupations as condition
+            # if (
+            #         round(dE_up, 1) != 0 and
+            #         round(up_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
+            #         round(up_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
+            # ):
                 transition_dict.update(
                     {
                         "up_tran_level": tuple(up_tran_df["energy"]),
@@ -537,11 +541,15 @@ def get_in_gap_transition(tot_df, edge_tol):
     if not dn_tran_df["n_occ_e"].empty:
         dE_dns = -1*np.diff(dn_tran_df["dist_from_vbm"])
         for idx, dE_dn in enumerate(dE_dns):
-            if (
-                    round(dE_dn, 1) != 0 and
-                    round(dn_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
-                    round(dn_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
-            ):
+            # Use the max transition as condition
+            max_tran_index = np.argmax(dE_ups)
+            if idx == max_tran_index:
+            # Use the occupations as condition
+            # if (
+            #         round(dE_dn, 1) != 0 and
+            #         round(dn_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
+            #         round(dn_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
+            # ):
                 transition_dict.update(
                     {
                         "dn_tran_level": tuple(dn_tran_df["energy"]),
@@ -1077,29 +1085,29 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
         dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
         # dos_plot.nn = [25, 26, 31, 30, 29, 49, 45]
         if plot == "eigen":
-            eigen_plot.show()
+            plt.show()
         if plot == "tdos":
             tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
-            tdos_plt.show()
+            plt.show()
             print(dos_plot.nn)
         if plot == "site":
             site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
-            site_dos_plt.show()
+            plt.show()
         if plot == "spd":
             spd_dos_plt = dos_plot.spd_plots(energy_upper_bound=2, energy_lower_bound=2)
-            spd_dos_plt.show()
+            plt.show()
         if plot == "orbital":
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
-            orbital_dos_plt.show()
+            plt.show()
         if plot == "all":
             eig_plt = eigen_plot
-            eig_plt.show()
+            plt.show()
             tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
-            tdos_plt.show()
+            plt.show()
             site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
-            site_dos_plt.show()
+            plt.show()
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
-            orbital_dos_plt.show()
+            plt.show()
 
 
         if path_save_fig:
@@ -1125,32 +1133,33 @@ if __name__ == '__main__':
     import os
     from matplotlib import pyplot as plt
 
-    # SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
-    # SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
-
-    SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data", port=12347)
-    SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data", port=12347)
+    SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
+    SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
+    
+    # SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data", port=12347)
+    # SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data", port=12347)
 
     defect_db =SCAN2dDefect
     ir_db = SCAN2dIR
 
-    defect_taskid = 368
+    defect_taskid = 1024
     defect = defect_db.collection.find_one({"task_id": defect_taskid})
     level_info, levels, defect_levels = None, None, None
     state = get_defect_state_v3(
         defect_db,
         {"task_id": defect_taskid},
-        -15, 15,
+        -10, 10,
         None,
         False,
         "all",
         None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
-        0.5,  #0.2
+        0.2,  #0.2
         locpot_c2db=None,  #(c2db, c2db_uid, 0)
         is_vacuum_aligment_on_plot=True,
-        edge_tol=(0.5, 0.5),
+        edge_tol=(-0.025, -0.025),
         ir_db=ir_db,
-        ir_entry_filter={"prev_fw_taskid": defect_taskid},
+        ir_entry_filter={"pc_from_id": pc_from_id, "defect_name": defect_name, "charge_state": charge_state} #{
+        # "prev_fw_taskid": defect_taskid},
     )
     tot, proj, d_df, levels, defect_levels = state
     level_info = d_df.to_dict("records")[0]
