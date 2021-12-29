@@ -435,12 +435,12 @@ def get_in_gap_transition(tot_df, edge_tol):
     # well-defined in-gap state: energetic difference of occupied states and vbm > 0.1   
     up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
                                                                                            edge_tol[1])
-    up_tran_df = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir", 
+    up_tran_df = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_ir", 
                                            "band_degeneracy", "band_index"]]
 
     dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
                                                                                           edge_tol[1])
-    dn_tran_df = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
+    dn_tran_df = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_ir",
                                            "band_degeneracy", "band_index"]]
     
     transition_dict = {}
@@ -464,15 +464,12 @@ def get_in_gap_transition(tot_df, edge_tol):
     if not up_tran_df["n_occ_e"].empty:
         dE_ups = -1*np.diff(up_tran_df["dist_from_vbm"])
         for idx, dE_up in enumerate(dE_ups):
-            # Use the max transition as condition
-            max_tran_index = np.argmax(dE_ups)
-            if idx == max_tran_index:
-            # Use the occupations as condition
-            # if (
-            #         round(dE_up, 1) != 0 and
-            #         round(up_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
-            #         round(up_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
-            # ):
+            if (
+                    up_tran_df["dist_from_cbm"].iloc[idx] <= 0 and  # set final defect level below cbm
+                    round(dE_up, 1) != 0 and
+                    round(up_tran_df["n_occ_e"].iloc[idx], 0) <= 0.5
+                    # and round(up_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
+            ):
                 transition_dict.update(
                     {
                         "up_tran_level": tuple(up_tran_df["energy"]),
@@ -541,15 +538,12 @@ def get_in_gap_transition(tot_df, edge_tol):
     if not dn_tran_df["n_occ_e"].empty:
         dE_dns = -1*np.diff(dn_tran_df["dist_from_vbm"])
         for idx, dE_dn in enumerate(dE_dns):
-            # Use the max transition as condition
-            max_tran_index = np.argmax(dE_ups)
-            if idx == max_tran_index:
-            # Use the occupations as condition
-            # if (
-            #         round(dE_dn, 1) != 0 and
-            #         round(dn_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
-            #         round(dn_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
-            # ):
+            if (
+                    dn_tran_df["dist_from_cbm"].iloc[idx] <= 0 and
+                    round(dE_dn, 1) != 0 and
+                    round(dn_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
+                    round(dn_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
+            ):
                 transition_dict.update(
                     {
                         "dn_tran_level": tuple(dn_tran_df["energy"]),
