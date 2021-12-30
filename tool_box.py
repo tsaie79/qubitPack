@@ -646,7 +646,7 @@ class IOTools:
         return df
 
     def read_json(self):
-        return pd.DataFrame(oadfn(os.path.join(self.cwd, self.json_file+".json")))
+        return pd.DataFrame(loadfn(os.path.join(self.cwd, self.json_file+".json")))
 
     def to_excel(self, file_name, index=False):
         self.df.to_excel(
