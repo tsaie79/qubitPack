@@ -465,10 +465,9 @@ def get_in_gap_transition(tot_df, edge_tol):
         dE_ups = -1*np.diff(up_tran_df["dist_from_vbm"])
         for idx, dE_up in enumerate(dE_ups):
             if (
-                    up_tran_df["dist_from_cbm"].iloc[idx] <= 0 and  # set final defect level below cbm
                     round(dE_up, 1) != 0 and
-                    round(up_tran_df["n_occ_e"].iloc[idx], 0) <= 0.5
-                    # and round(up_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
+                    round(up_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
+                    round(up_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
             ):
                 transition_dict.update(
                     {
@@ -539,7 +538,6 @@ def get_in_gap_transition(tot_df, edge_tol):
         dE_dns = -1*np.diff(dn_tran_df["dist_from_vbm"])
         for idx, dE_dn in enumerate(dE_dns):
             if (
-                    dn_tran_df["dist_from_cbm"].iloc[idx] <= 0 and
                     round(dE_dn, 1) != 0 and
                     round(dn_tran_df["n_occ_e"].iloc[idx], 0) == 0 and
                     round(dn_tran_df["n_occ_e"].iloc[idx+1], 1) >= 0.5
