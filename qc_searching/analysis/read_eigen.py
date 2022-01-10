@@ -155,11 +155,11 @@ class DetermineDefectState:
             self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
             self.entry_host = locpot_c2db[0].collection.find_one({"uid": locpot_c2db[1]})
             self.vacuum_locpot_host = self.entry_host["evac"]
-            self.cbm = self.entry_host["cbm_hse_nosoc"] + locpot_c2db[2]
+            self.cbm = self.entry_host["cbm_hse_nosoc"] + locpot_c2db[3]
             self.vbm = self.entry_host["vbm_hse_nosoc"] + locpot_c2db[2]
             efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot + locpot_c2db[2]
             self.efermi = efermi_to_defect_vac
-            
+
         elif locpot:
             self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
             db_host = locpot[0]
@@ -280,7 +280,7 @@ class DetermineDefectState:
         for spin in spins:
             band_info = {}
             try:
-                eigenvals.update(get_eigenvals(spin, self.eigenvals, energy_range=self.search_range))
+                eigenvals.update(get_eigenvals(spin, self.eigenvals, energy_range=[self.vbm, self.cbm]))
                 band_detail, proj = get_promising_state(spin, eigenvals)
                 band_proj[spin] = proj
                 band_info.update(band_detail)
@@ -918,8 +918,11 @@ class DetermineDefectStateV3:
         state_df = pd.concat(list(channel.values()), ignore_index=False)
         bulk_state_df = pd.concat(list(bulk_channel.values()), ignore_index=False)
         self.cbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 0, "energy"].min()
+        self.cbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.cbm].index.tolist()
         self.vbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 1, "energy"].max()
-        print("perturbed band edges: (VBM, CBM): ({}, {})".format(self.vbm, self.cbm))
+        self.vbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.vbm].index.tolist()
+        print("perturbed band edges: (VBM, CBM): ({}/{}, {}/{})".format(self.vbm, self.vbm_index, self.cbm, 
+                                                                        self.cbm_index))
 
         proj_state_df = pd.concat(band_proj.values(), ignore_index=False)
         proj_state_df = proj_state_df.fillna(0)
@@ -954,8 +957,9 @@ class DetermineDefectStateV3:
         state_df["dist_from_vbm"] = dist_from_vbm.round(3)
         dist_from_cbm = state_df["energy"] - self.cbm
         state_df["dist_from_cbm"] = dist_from_cbm.round(3)
-        
         state_df["band_index"] = state_df.index
+        bulk_state_df["band_index"] = bulk_state_df.index
+
 
         return state_df, proj_state_df, bulk_state_df, bulk_proj_state_df
 

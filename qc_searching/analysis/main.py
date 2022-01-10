@@ -74,7 +74,8 @@ def get_eigen_plot_v1(tot, determine_defect_state_obj, top_texts, is_vacuum_alig
     return levels, fig
 
 
-def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False, edge_tol=(0.25, 0.25)):
+def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False, edge_tol=(0.25, 0.25), 
+                      eigen_plot_title=None):
     vbm, cbm = None, None
 
     if is_vacuum_aligment:
@@ -195,7 +196,7 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         # ax.text(-0.1, 1.05, "{}-{}".format(uid, host_taskid), size=30, transform=ax.transAxes)
         return fig
 
-    def plotting_v2(set_vbm, set_cbm, tot_df, edge_tol=edge_tol):
+    def plotting_v2(set_vbm, set_cbm, tot_df, edge_tol=edge_tol, eigen_plot_title=None):
         from matplotlib.ticker import AutoMinorLocator
         # plt.style.use(['grid'])
         
@@ -219,6 +220,8 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         dn_band_id = tot_df.loc[dn_condition, "band_id"]
 
         fig, ax = plt.subplots(figsize=(12, 11), dpi=300)
+        if eigen_plot_title:
+            ax.set_title(eigen_plot_title)
         if up_ir.empty:
             up_ir = [None for i in up]
         if up_deg.empty:
@@ -314,7 +317,7 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         return fig
 
 
-    fig = plotting_v2(vbm, cbm, tot)    
+    fig = plotting_v2(vbm, cbm, tot, eigen_plot_title=eigen_plot_title)    
     
     if determine_defect_state_obj.save_fig_path:
         fig.savefig(os.path.join(determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
@@ -644,7 +647,7 @@ def get_defect_state_v1(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
     print("top_texts:{}".format(top_texts))
     levels, eigen_plot = get_eigen_plot_v1(tot, can, top_texts, is_vacuum_aligment=is_vacuum_aligment_on_plot)
-
+    tot["energy"] -= can.vacuum_locpot
     print("**"*20)
     print(d_df)
     e = {}
@@ -1014,8 +1017,17 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
     top_texts = None
     top_texts_for_d_df = None
+    perturbed_bandedge_ir = []
+
     if ir_db and ir_entry_filter:
         tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+
+        bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
+        bandedge_bulk_tot, bandedge_bulk_ir_entry = get_ir_info(bandedge_bulk_tot, ir_db, ir_entry_filter)
+        perturbed_bandedge_ir.append(bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.vbm_index[0],
+                                                           "band_ir"].iloc[0].split(" ")[0])
+        perturbed_bandedge_ir.append(bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.cbm_index[0],
+                                                           "band_ir"].iloc[0].split(" ")[0])
         print("%%"* 20)
         print(tot.columns)
         if ir_entry:
@@ -1038,16 +1050,15 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
                 top_texts_for_d_df[spin] = top_texts_for_d_df[spin]
 
 
-    print("$$$"*20)
+    print("==D-top_texts="*20)
     print("top_texts:{}".format(top_texts))
-    levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot, edge_tol=edge_tol)
-
+    levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot, 
+                                           edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"])
+    levels.update({"level_edge_ir": tuple(perturbed_bandedge_ir)})
     d_df = get_in_gap_transition(tot, edge_tol)
+    print(d_df)
     in_gap_levels = get_in_gap_levels(tot, edge_tol)
-    # d_df = pd.DataFrame([e]).transpose()
     print(tot)
-
-
 
     if type(clipboard) == tuple:
         if clipboard[0] == "tot":
@@ -1115,44 +1126,82 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     return tot, proj, d_df, levels, in_gap_levels
 
 
+class RunDefectState:
+    @classmethod
+    def get_defect_state_with_ir(cls):
+        from qubitPack.tool_box import get_db
 
+        from pymatgen import Structure
+        import os
+        from matplotlib import pyplot as plt
+
+        # SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
+        # SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
+
+        SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347)
+        SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
+
+        defect_db =SCAN2dDefect
+        ir_db = SCAN2dIR
+
+        defect_taskid = 868
+        defect = defect_db.collection.find_one({"task_id": defect_taskid})
+        level_info, levels, defect_levels = None, None, None
+        state = get_defect_state_v3(
+            defect_db,
+            {"task_id": defect_taskid},
+            -10, 10,
+            None,
+            "all",
+            None,
+            None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
+            0.2,  #0.2
+            locpot_c2db=None,  #(c2db, c2db_uid, 0)
+            is_vacuum_aligment_on_plot=True,
+            edge_tol=(-0.025, -0.025), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            # cbm by 0.025 eV
+            ir_db=ir_db,
+            ir_entry_filter={"prev_fw_taskid": defect_taskid},
+        )
+
+        tot, proj, d_df, levels, defect_levels = state
+        level_info = d_df.to_dict("records")[0]
+        plt.show()
+        return tot, proj, d_df, levels, defect_levels
+
+    @classmethod
+    def get_defect_state_without_ir(cls, defect_taskid, host_taskid, defect_col, host_col, vbm_dx=0, cbm_dx=0):
+        from qubitPack.qc_searching.analysis.main import get_defect_state_v1
+        from qubitPack.tool_box import get_db
+        from pymatgen import Structure
+        import os
+
+        defect_db = get_db("antisiteQubit", defect_col, port=12345)
+        host_db = get_db("owls", host_col, port=12345)
+        c2db = get_db("2dMat_from_cmr_fysik", "2dMaterial_v1", port=12345, user="readUser", password="qiminyan")
+
+        tk_id = defect_taskid
+
+        # pc_from_id = defect_db.collection.find_one({"task_id": tk_id})["pc_from"]
+        # c2db_uid = host_db.collection.find_one({"task_id": pc_from_id})["c2db_info"]["uid"]
+
+        tot, proj, d_df, levels = get_defect_state_v1(
+            defect_db,
+            {"task_id": defect_taskid},
+            -10, 10,
+            None,
+            "all",
+            locpot=(host_db, host_taskid, 0, vbm_dx, cbm_dx),
+            #(get_db("antisiteQubit", "W_S_Ef"), 312, 0.), 591, 593:WS2, 592, 594:WSe2 630:WTe2, 611, :MoS2, 610,
+            # :MoSe2,
+            # 631:MoTe2
+            threshold=0.,
+            locpot_c2db=None, #(c2db, "MoS2-MoS2-NM", 0.387, 1.5),
+            is_vacuum_aligment_on_plot=True
+        )
+        return tot, proj, d_df, levels
 
 
 if __name__ == '__main__':
-    from qubitPack.tool_box import get_db
-
-    from pymatgen import Structure
-    import os
-    from matplotlib import pyplot as plt
-
-    SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
-    SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
-    
-    # SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data", port=12347)
-    # SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data", port=12347)
-
-    defect_db =SCAN2dDefect
-    ir_db = SCAN2dIR
-
-    defect_taskid = 1024
-    defect = defect_db.collection.find_one({"task_id": defect_taskid})
-    level_info, levels, defect_levels = None, None, None
-    state = get_defect_state_v3(
-        defect_db,
-        {"task_id": defect_taskid},
-        -10, 10,
-        None,
-        False,
-        "all",
-        None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
-        0.2,  #0.2
-        locpot_c2db=None,  #(c2db, c2db_uid, 0)
-        is_vacuum_aligment_on_plot=True,
-        edge_tol=(-0.025, -0.025),
-        ir_db=ir_db,
-        ir_entry_filter={"pc_from_id": pc_from_id, "defect_name": defect_name, "charge_state": charge_state} #{
-        # "prev_fw_taskid": defect_taskid},
-    )
-    tot, proj, d_df, levels, defect_levels = state
-    level_info = d_df.to_dict("records")[0]
-    plt.show()
+    # tot, proj, d_df, levels  = RunDefectState.get_defect_state_without_ir(744, 4237, "vac_tmd", "mx2_antisite_pc")
+    tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir()
