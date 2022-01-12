@@ -1024,6 +1024,9 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
         bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
         bandedge_bulk_tot, bandedge_bulk_ir_entry = get_ir_info(bandedge_bulk_tot, ir_db, ir_entry_filter)
+        print("==bandedge_ir"*20)
+        print(bandedge_bulk_tot)
+
         perturbed_bandedge_ir.append(bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.vbm_index[0],
                                                            "band_ir"].iloc[0].split(" ")[0])
         perturbed_bandedge_ir.append(bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.cbm_index[0],
@@ -1135,17 +1138,22 @@ class RunDefectState:
         import os
         from matplotlib import pyplot as plt
 
-        # SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
-        # SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
-
-        SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347)
-        SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
+        defect_taskid = 6043
+        SCAN2dDefect = get_db("Scan2dDefect", "calc_data",  user="Jeng_ro", password="qimin", port=12347)
+        SCAN2dIR = get_db("Scan2dDefect", "ir_data", port=12347)
+        # 
+        # SCAN2dDefect = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347)
+        # SCAN2dIR = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
 
         defect_db =SCAN2dDefect
         ir_db = SCAN2dIR
 
-        defect_taskid = 868
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
+
+        pc_from_id = defect["pc_from_id"]
+        defect_name = defect["defect_name"]
+        charge_state = defect["charge_state"]
+
         level_info, levels, defect_levels = None, None, None
         state = get_defect_state_v3(
             defect_db,
@@ -1158,10 +1166,11 @@ class RunDefectState:
             0.2,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(-0.025, -0.025), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=(0.25, 0.25), # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
             ir_db=ir_db,
-            ir_entry_filter={"prev_fw_taskid": defect_taskid},
+            ir_entry_filter={"pc_from_id": pc_from_id, "defect_name": defect_name, "charge_state": charge_state},
+            # ir_entry_filter={"prev_fw_taskid": defect_taskid},
         )
 
         tot, proj, d_df, levels, defect_levels = state
