@@ -563,7 +563,10 @@ def find_scaling_for_2d_defect(pc, min_lc=15):
     return scaling, st
 
 
-def get_band_edges_characters(bs):
+def get_band_edges_characters(bs, ir_data=None):
+        if ir_data:
+            ir_db = ir_data["db"]
+
         cbm = bs.get_cbm()
         vbm = bs.get_vbm()
         data = {}
@@ -571,6 +574,7 @@ def get_band_edges_characters(bs):
         # data["vbm"] = {"up": {}, "down": {}}
         for name, band_edge in zip(["vbm", "cbm"], [vbm, cbm]):
             band_index = band_edge["band_index"]
+            kpoint = band_edge["kpoint"].frac_coords
             if band_index.get(Spin.up) != band_index.get(Spin.down):
                 data.update({"{}_is_up_dn_band_idx_equal".format(name): False})
             else:
@@ -586,6 +590,18 @@ def get_band_edges_characters(bs):
                     max_proj_orbital_id = projections[spin][:, max_tot_proj_element_idx].argmax()
                     max_proj_orbital = Orbital(max_proj_orbital_id).name
 
+                    band_ir_info = None
+                    if ir_data:
+                        band_ir_info = get_ir_info({"kpoint": kpoint, "spin": spin, "band_index": band_idx}, ir_db,
+                                                   ir_data["entry_filter"])
+                        data.update({
+                            "{}_{}_band_ir".format(name, spin.name): band_ir_info[2],
+                            "{}_{}_band_deg".format(name, spin.name): band_ir_info[3],
+                            "{}_{}_band_energy".format(name, spin.name): band_ir_info[4],
+                            "{}_{}_band_index".format(name, spin.name): band_ir_info[0],
+                            "{}_{}_ir_list_idx".format(name, spin.name): band_ir_info[1],
+                        })
+                        
                     data.update(
                         {
                             "{}_{}_max_el_idx".format(name, spin.name): max_tot_proj_element_idx,
@@ -626,6 +642,32 @@ def plot_lopot(db, task_id):
     plt.plot(locpot)
     plt.show()
 
+def get_ir_info(band_info, ir_db, ir_entry_filter):
+    """
+    input: {"kpoint": bs.kpoints[20].frac_coords, "spin": "up", "band_index": 11}, ir_db, {"task_id": 5781}
+    output: (band_index, list_id, band_ir, band_deg, band_energy)
+    """
+    # Locate idx in band_idex
+    kpoint = "({:.3}, {:.3}, {:.3})".format(*band_info["kpoint"]) #bs.kpoints
+    spin = band_info["spin"] #"up"
+    band_index = band_info["band_index"]
+
+    ir_entry = ir_db.collection.find_one(ir_entry_filter)
+    print("IR taskid:{}".format(ir_entry["task_id"]))
+
+    band_index_list = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["band_index"]
+    list_id = band_index_list.index(band_index+1)
+
+    # Locate degeneracy from band_degeneracy
+    band_deg = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["band_degeneracy"][list_id]
+
+    # Locate IR from irreducible_reps
+    band_ir = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["irreducible_reps"][list_id].split(" ")[0]
+
+    # Locat energy
+    band_energy = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["band_eigenval"][list_id]
+
+    return band_index, list_id, band_ir, band_deg, band_energy
 
 class IOTools:
     def __init__(self, cwd, pandas_df= None, excel_file=None, json_file=None):
@@ -659,3 +701,5 @@ class IOTools:
 
     def get_diff_btw_dfs(self, df1, df2):
         return  pd.concat([df1,df2]).drop_duplicates(keep=False)
+
+
