@@ -307,7 +307,9 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         )
         ax.text(0.75, 0.81, dn_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
 
-
+        ax.text(0.625, set_vbm-0.5, "VBM:{}".format(set_vbm), fontsize=12)
+        ax.text(0.625, set_cbm+0.5, "CBM:{}".format(set_cbm), fontsize=12)
+        
         ax.set_ylim(set_vbm-2, set_cbm+2)
         ax.yaxis.set_minor_locator(AutoMinorLocator(5))
         for tick in ax.get_yticklabels():
