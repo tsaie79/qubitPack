@@ -81,12 +81,12 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
     if is_vacuum_aligment:
         tot["energy"] -= determine_defect_state_obj.vacuum_locpot
         tot["energy"] = trunc(tot["energy"], 3)
-        print(tot["energy"])
+        print("Total states: {}".format(tot["energy"]))
         vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
         cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
     else:
         tot["energy"] = trunc(tot["energy"], 3)
-        print(tot["energy"])
+        print("Total states: {}".format(tot["energy"]))
         vbm = trunc(determine_defect_state_obj.vbm, 3)
         cbm = trunc(determine_defect_state_obj.cbm, 3)
 
@@ -199,38 +199,45 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
     def plotting_v2(set_vbm, set_cbm, tot_df, edge_tol=edge_tol, eigen_plot_title=None):
         from matplotlib.ticker import AutoMinorLocator
         # plt.style.use(['grid'])
-        
+
         in_gap_condition = (tot_df["energy"] >= vbm-edge_tol[0]) & (tot_df["energy"] <= cbm+edge_tol[1]) 
         up_condition = (tot_df["spin"] == "1") & in_gap_condition
         dn_condition = (tot_df["spin"] == "-1") & in_gap_condition
         
         up = tot_df.loc[up_condition, "energy"]
         dn = tot_df.loc[dn_condition, "energy"]
-
-        up_deg = tot_df.loc[up_condition, "band_degeneracy"]
-        dn_deg = tot_df.loc[dn_condition, "band_degeneracy"]
-
+        
+        # print colume names of tot_df
+        print(tot_df.columns) 
+        # if tot_df has band_degeneracy column, get the band_degeneracy of each band 
+        if "band_degeneracy" in tot_df.columns:
+            up_deg = tot_df.loc[up_condition, "band_degeneracy"]
+            dn_deg = tot_df.loc[dn_condition, "band_degeneracy"]
+        else:
+            up_deg = [None for i in up]
+            dn_deg = [None for i in dn] 
+            print("band_degeneracy column not found in tot_df")
+        
         up_occ = tot_df.loc[up_condition, "n_occ_e"]
         dn_occ = tot_df.loc[dn_condition, "n_occ_e"]
 
-        up_ir = tot_df.loc[up_condition, "band_ir"]
-        dn_ir = tot_df.loc[dn_condition, "band_ir"]
-
-        up_band_id = tot_df.loc[up_condition, "band_id"]
-        dn_band_id = tot_df.loc[dn_condition, "band_id"]
+        if "band_ir" in tot_df.columns:
+            up_ir = tot_df.loc[up_condition, "band_ir"]
+            dn_ir = tot_df.loc[dn_condition, "band_ir"]
+        else:
+            up_ir = [None for i in up]
+            dn_ir = [None for i in dn]
+        
+        if "band_id" in tot_df.columns:
+            up_band_id = tot_df.loc[up_condition, "band_id"]
+            dn_band_id = tot_df.loc[dn_condition, "band_id"]
+        else:
+            up_band_id = [None for i in up]
+            dn_band_id = [None for i in dn]
 
         fig, ax = plt.subplots(figsize=(12, 11), dpi=300)
         if eigen_plot_title:
             ax.set_title(eigen_plot_title)
-        if up_ir.empty:
-            up_ir = [None for i in up]
-        if up_deg.empty:
-            up_deg = [None for i in up]
-
-        if dn_ir.empty:
-            dn_ir = [None for i in dn]
-        if dn_deg.empty:
-            dn_deg = [None for i in dn]
 
         ax.bar(0, 2, 1.5, set_vbm-2, color="deepskyblue", align="edge")
         ax.bar(0, 2, 1.5, set_cbm, color="orange", align="edge")
@@ -330,17 +337,18 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         {
             "level_vbm": vbm,
             "level_cbm": cbm,
-            "level_up_deg": tuple(tot.loc[tot["spin"] == "1", "band_degeneracy"]),
-            "level_dn_deg": tuple(tot.loc[tot["spin"] == "-1", "band_degeneracy"]),
-            "level_up_ir": tuple(tot.loc[tot["spin"] == "1", "band_ir"]),
-            "level_dn_ir": tuple(tot.loc[tot["spin"] == "-1", "band_ir"]),
+            # if tot has a column of band_degeneracy, then transform it into tuple 
+            "level_up_deg": tuple(tot.loc[tot["spin"] == "1", "band_degeneracy"]) if "band_degeneracy" in tot.loc[tot["spin"] == "1"].columns else (),
+            "level_dn_deg": tuple(tot.loc[tot["spin"] == "-1", "band_degeneracy"]) if "band_degeneracy" in tot.loc[tot["spin"] == "-1"].columns else (),
+            "level_up_ir": tuple(tot.loc[tot["spin"] == "1", "band_ir"]) if "band_ir" in tot.loc[tot["spin"] == "1"].columns else (),
+            "level_dn_ir": tuple(tot.loc[tot["spin"] == "-1", "band_ir"]) if "band_ir" in tot.loc[tot["spin"] == "-1"].columns else (),
             "level_up_energy": tuple(tot.loc[tot["spin"] == "1", "energy"]),
             "level_dn_energy": tuple(tot.loc[tot["spin"] == "-1", "energy"]),
             "level_up_occ": tuple(tot.loc[tot["spin"] == "1", "n_occ_e"]),
             "level_dn_occ": tuple(tot.loc[tot["spin"] == "-1", "n_occ_e"]),
-            "level_up_id": tuple(tot.loc[tot["spin"] == "1", "band_id"]),
+            "level_up_id": tuple(tot.loc[tot["spin"] == "1", "band_id"]) if "band_id" in tot.loc[tot["spin"] == "1"].columns else (),
             "level_up_index": tuple(tot.loc[tot["spin"] == "1", "band_index"]+1),
-            "level_dn_id": tuple(tot.loc[tot["spin"] == "-1", "band_id"]),
+            "level_dn_id": tuple(tot.loc[tot["spin"] == "-1", "band_id"]) if "band_id" in tot.loc[tot["spin"] == "-1"].columns else (),
             "level_dn_index": tuple(tot.loc[tot["spin"] == "-1", "band_index"]+1),
         }
     )
@@ -402,21 +410,28 @@ def get_in_gap_levels(tot_df, edge_tol):
     in_gap_levels = {}
     up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
                                                                                          edge_tol[1])
-    up_levels = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
-                                          "band_degeneracy", "band_index"]]
 
-    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
-                                                                                         edge_tol[1])
-    dn_levels = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
-                                           "band_degeneracy", "band_index"]]
+    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
+                                                                                             edge_tol[1])
+
+    if "band_degeneracy" in tot_df.columns and "band_ir" in tot_df.columns and "band_id" in tot_df.columns:
+        up_levels = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
+                                              "band_degeneracy", "band_index"]]
+        dn_levels = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
+                                              "band_degeneracy", "band_index"]]
+    else:
+        up_levels = tot_df.loc[up_condition, ["energy", "dist_from_vbm", "n_occ_e", "band_index"]]
+        dn_levels = tot_df.loc[dn_condition, ["energy", "dist_from_vbm", "n_occ_e", "band_index"]]
+
+
 
     in_gap_levels.update(
         {
             "up_in_gap_level": tuple(up_levels["energy"]),
-            "up_in_gap_ir": tuple(up_levels["band_ir"]),
+            "up_in_gap_ir": tuple(up_levels["band_ir"]) if "band_ir" in up_levels.columns else (),
             "up_in_gap_occ": tuple(up_levels["n_occ_e"]),
-            "up_in_gap_deg": tuple(up_levels["band_degeneracy"]),
-            "up_in_gap_band_id": tuple(up_levels["band_id"]),
+            "up_in_gap_deg": tuple(up_levels["band_degeneracy"]) if "band_degeneracy" in up_levels.columns else (),
+            "up_in_gap_band_id": tuple(up_levels["band_id"]) if "band_id" in up_levels.columns else (),
             "up_in_gap_band_index": tuple(up_levels["band_index"]+1)
         }
     )
@@ -424,10 +439,10 @@ def get_in_gap_levels(tot_df, edge_tol):
     in_gap_levels.update(
         {
             "dn_in_gap_level": tuple(dn_levels["energy"]),
-            "dn_in_gap_ir": tuple(dn_levels["band_ir"]),
+            "dn_in_gap_ir": tuple(dn_levels["band_ir"]) if "band_ir" in dn_levels.columns else (),
             "dn_in_gap_occ": tuple(dn_levels["n_occ_e"]),
-            "dn_in_gap_deg": tuple(dn_levels["band_degeneracy"]),
-            "dn_in_gap_band_id": tuple(dn_levels["band_id"]),
+            "dn_in_gap_deg": tuple(dn_levels["band_degeneracy"]) if "band_degeneracy" in dn_levels.columns else (),
+            "dn_in_gap_band_id": tuple(dn_levels["band_id"]) if "band_id" in dn_levels.columns else (),
             "dn_in_gap_band_index": tuple(dn_levels["band_index"]+1)
         }
     )
@@ -438,13 +453,19 @@ def get_in_gap_transition(tot_df, edge_tol):
     # well-defined in-gap state: energetic difference of occupied states and vbm > 0.1   
     up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
                                                                                            edge_tol[1])
-    up_tran_df = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_ir", 
-                                           "band_degeneracy", "band_index"]]
 
-    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <= 
-                                                                                          edge_tol[1])
-    dn_tran_df = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_ir",
-                                           "band_degeneracy", "band_index"]]
+    dn_condition = (tot_df["spin"] == "-1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
+                                                                                             edge_tol[1])
+    
+    # if tot_df has band_id, band_ir, and band_degeneracy,
+    if "band_degeneracy" in tot_df.columns and "band_id" in tot_df.columns and "band_ir" in tot_df.columns:
+        up_tran_df = tot_df.loc[up_condition, ["band_id", "energy", "dist_from_vbm", "n_occ_e", "band_ir",
+                                                  "band_degeneracy", "band_index"]]
+        dn_tran_df = tot_df.loc[dn_condition, ["band_id", "energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_ir",
+                                               "band_degeneracy", "band_index"]]
+    else:
+        up_tran_df = tot_df.loc[up_condition, ["energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_index"]]
+        dn_tran_df = tot_df.loc[dn_condition, ["energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_index"]]
     
     transition_dict = {}
     
@@ -479,21 +500,22 @@ def get_in_gap_transition(tot_df, edge_tol):
                         "up_tran_en": dE_up,
                         "up_tran_bottom": round(up_tran_df["dist_from_vbm"].iloc[idx+1], 3),
                         "up_tran_top": round(up_tran_df["dist_from_vbm"].iloc[idx], 3),
-                        "up_tran_ir": tuple(up_tran_df["band_ir"]),
+                        "up_tran_ir": tuple(up_tran_df["band_ir"]) if "band_ir" in up_tran_df.columns else (),
                         "up_tran_occ": tuple(up_tran_df["n_occ_e"]),
-                        "up_tran_deg": tuple(up_tran_df["band_degeneracy"]),
-                        "up_tran_band_id": tuple(up_tran_df["band_id"]),
+                        "up_tran_deg": tuple(up_tran_df["band_degeneracy"]) if "band_degeneracy" in up_tran_df.columns else (),
+                        "up_tran_band_id": tuple(up_tran_df["band_id"]) if "band_id" in up_tran_df.columns else (),
                         "up_tran_band_index": tuple(up_tran_df["band_index"]+1),
                         
                         "up_tran_lumo_homo_energy": (round(up_tran_df["dist_from_vbm"].iloc[idx], 3),
                                                      round(up_tran_df["dist_from_vbm"].iloc[idx+1], 3)),
-                        "up_tran_lumo_homo_band_id": (up_tran_df["band_id"].iloc[idx],
-                                                      up_tran_df["band_id"].iloc[idx+1]),
+                        "up_tran_lumo_homo_band_id": (up_tran_df["band_id"].iloc[idx], up_tran_df["band_id"].iloc[
+                            idx+1])  if "band_id" in up_tran_df.columns else (),
                         "up_tran_lumo_homo_band_index": (up_tran_df["band_index"].iloc[idx]+1,
                                                          up_tran_df["band_index"].iloc[idx+1]+1),
                         "up_tran_lumo_homo_deg": (up_tran_df["band_degeneracy"].iloc[idx],
-                                                  up_tran_df["band_degeneracy"].iloc[idx+1]),
-                        "up_tran_lumo_homo_ir": (up_tran_df["band_ir"].iloc[idx], up_tran_df["band_ir"].iloc[idx+1]),
+                                                  up_tran_df["band_degeneracy"].iloc[idx+1]) if "band_degeneracy" in up_tran_df.columns else (),
+                        "up_tran_lumo_homo_ir": (up_tran_df["band_ir"].iloc[idx],
+                                                 up_tran_df["band_ir"].iloc[idx+1]) if "band_ir" in up_tran_df.columns else (),
                     }
                 )
                 break
@@ -552,21 +574,21 @@ def get_in_gap_transition(tot_df, edge_tol):
                         "dn_tran_en": dE_dn,
                         "dn_tran_bottom": round(dn_tran_df["dist_from_vbm"].iloc[idx+1], 3),
                         "dn_tran_top": round(dn_tran_df["dist_from_vbm"].iloc[idx], 3),
-                        "dn_tran_ir": tuple(dn_tran_df["band_ir"]),
+                        "dn_tran_ir": tuple(dn_tran_df["band_ir"]) if "band_ir" in dn_tran_df.columns else (),
                         "dn_tran_occ": tuple(dn_tran_df["n_occ_e"]),
-                        "dn_tran_deg": tuple(dn_tran_df["band_degeneracy"]),
-                        "dn_tran_band_id": tuple(dn_tran_df["band_id"]),
+                        "dn_tran_deg": tuple(dn_tran_df["band_degeneracy"]) if "band_degeneracy" in dn_tran_df.columns else (),
+                        "dn_tran_band_id": tuple(dn_tran_df["band_id"]) if "band_id" in dn_tran_df.columns else (),
                         "dn_tran_band_index": tuple(dn_tran_df["band_index"]+1),
 
                         "dn_tran_lumo_homo_energy": (round(dn_tran_df["dist_from_vbm"].iloc[idx], 3),
                                                      round(dn_tran_df["dist_from_vbm"].iloc[idx+1], 3)),
                         "dn_tran_lumo_homo_band_id": (dn_tran_df["band_id"].iloc[idx],
-                                                      dn_tran_df["band_id"].iloc[idx+1]),
+                                                      dn_tran_df["band_id"].iloc[idx+1]) if "band_id" in dn_tran_df.columns else (),
                         "dn_tran_lumo_homo_band_index": (dn_tran_df["band_index"].iloc[idx]+1,
                                                          dn_tran_df["band_index"].iloc[idx+1]+1),
                         "dn_tran_lumo_homo_deg": (dn_tran_df["band_degeneracy"].iloc[idx],
-                                                  dn_tran_df["band_degeneracy"].iloc[idx+1]),
-                        "dn_tran_lumo_homo_ir": (dn_tran_df["band_ir"].iloc[idx], dn_tran_df["band_ir"].iloc[idx+1]),
+                                                  dn_tran_df["band_degeneracy"].iloc[idx+1]) if "band_degeneracy" in dn_tran_df.columns else (),
+                        "dn_tran_lumo_homo_ir": (dn_tran_df["band_ir"].iloc[idx], dn_tran_df["band_ir"].iloc[idx+1]) if "band_ir" in dn_tran_df.columns else ()
                     }
                 )
                 break
@@ -1053,13 +1075,12 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
                 top_texts_for_d_df[spin] = top_texts_for_d_df[spin]
 
 
-    print("==D-top_texts="*20)
     print("top_texts:{}".format(top_texts))
     levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot, 
                                            edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"])
-    levels.update({"level_edge_ir": tuple(perturbed_bandedge_ir)})
-    d_df = get_in_gap_transition(tot, edge_tol)
-    print(d_df)
+    levels.update({"perturbed_level_edge_ir": tuple(perturbed_bandedge_ir)})
+    d_df = get_in_gap_transition(tot, edge_tol) # need to fix
+    print("Transition: {}".format(d_df))
     in_gap_levels = get_in_gap_levels(tot, edge_tol)
     print(tot)
 

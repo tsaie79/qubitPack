@@ -592,14 +592,28 @@ def get_band_edges_characters(bs, ir_data=None):
 
                     band_ir_info = None
                     if ir_data:
-                        band_ir_info = get_ir_info({"kpoint": kpoint, "spin": spin, "band_index": band_idx}, ir_db,
-                                                   ir_data["entry_filter"])
+                        ir_entry = ir_db.collection.find_one(ir_data["entry_filter"]) or {"task_id": None}
+                        if band_idx != []:
+                            band_idx_first = band_idx[0]
+                            try:
+                                band_ir_info = get_ir_info({"kpoint": kpoint, "spin": spin.name, 
+                                                            "band_index": band_idx_first}, 
+                                                           ir_db,
+                                                           {"task_id": ir_entry["task_id"]})
+                            except:
+                                band_ir_info = (None, None, None, None, None, None, None, None)
+                        else:
+                            band_ir_info = (None, None, None, None, None, None, None, None)
                         data.update({
                             "{}_{}_band_ir".format(name, spin.name): band_ir_info[2],
                             "{}_{}_band_deg".format(name, spin.name): band_ir_info[3],
                             "{}_{}_band_energy".format(name, spin.name): band_ir_info[4],
                             "{}_{}_band_index".format(name, spin.name): band_ir_info[0],
+                            "{}_{}_band_kpoint".format(name, spin.name): band_ir_info[5],
+                            "{}_{}_band_kgroup".format(name, spin.name): band_ir_info[6],
+                            "{}_{}_band_kgroup_table".format(name, spin.name): band_ir_info[7],
                             "{}_{}_ir_list_idx".format(name, spin.name): band_ir_info[1],
+                            "ir_db": "{}/{}/{}".format(ir_db.db_name, ir_db.collection.name, ir_entry.get("task_id"))
                         })
                         
                     data.update(
@@ -648,12 +662,18 @@ def get_ir_info(band_info, ir_db, ir_entry_filter):
     output: (band_index, list_id, band_ir, band_deg, band_energy)
     """
     # Locate idx in band_idex
-    kpoint = "({:.3}, {:.3}, {:.3})".format(*band_info["kpoint"]) #bs.kpoints
+    kpoint = band_info["kpoint"].round(3).tolist() #bs.kpoints
     spin = band_info["spin"] #"up"
     band_index = band_info["band_index"]
-
+    
     ir_entry = ir_db.collection.find_one(ir_entry_filter)
-    print("IR taskid:{}".format(ir_entry["task_id"]))
+    ir_kpoints_list = [[float(k_component) for k_component in k[1:-1].split(",")] for k in ir_entry["irvsp"][
+        "parity_eigenvals"][
+        "general"].keys()]
+
+    k_match_index = ir_kpoints_list.index(kpoint)
+    kpoint = list(ir_entry["irvsp"]["parity_eigenvals"]["general"].keys())[k_match_index]
+    print("IR taskid:{}, kpoint:{}".format(ir_entry["task_id"], kpoint))
 
     band_index_list = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["band_index"]
     list_id = band_index_list.index(band_index+1)
@@ -667,7 +687,11 @@ def get_ir_info(band_info, ir_db, ir_entry_filter):
     # Locat energy
     band_energy = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["band_eigenval"][list_id]
 
-    return band_index, list_id, band_ir, band_deg, band_energy
+    # k-group and its character table
+    k_group = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["point_group"]
+    table = ir_entry["irvsp"]["parity_eigenvals"]["general"][kpoint][spin]["pg_character_table"]
+
+    return band_index, list_id, band_ir, band_deg, band_energy, kpoint, k_group, table
 
 class IOTools:
     def __init__(self, cwd, pandas_df= None, excel_file=None, json_file=None):
@@ -701,5 +725,4 @@ class IOTools:
 
     def get_diff_btw_dfs(self, df1, df2):
         return  pd.concat([df1,df2]).drop_duplicates(keep=False)
-
 
