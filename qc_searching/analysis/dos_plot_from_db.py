@@ -35,8 +35,8 @@ class DosPlotDB:
                     )
                 )
             )
-        print("DOS="*10)
-        print(f"\nDOD activated!:{self.e['task_id']}")
+        print("DOS="*20)
+        print(f"\nDOS activated!:{self.e['task_id']}")
         self.complete_dos1 = db.get_dos(self.e["task_id"])
         self.cbm_primitive = cbm
         self.vbm_primitive = vbm
