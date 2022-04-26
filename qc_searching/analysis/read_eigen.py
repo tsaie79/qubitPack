@@ -930,12 +930,16 @@ class DetermineDefectStateV3:
         bulk_proj_state_df = pd.concat(bulk_band_proj.values(), ignore_index=False)
         bulk_proj_state_df = bulk_proj_state_df.fillna(0)
 
-        proj_state_df["adjacent"] = proj_state_df.iloc[:,0] + proj_state_df.iloc[:,1] + proj_state_df.iloc[:, 2]
-        proj_state_df["antisite"] = proj_state_df.iloc[:,3]
+        # sum up to the columns with integer column names
+        adjacent_sum = proj_state_df.copy().iloc[:, :-3].sum(axis=1)
+        antisite_sum = proj_state_df.copy().iloc[:, -3]
+        proj_state_df["adjacent"] = adjacent_sum
+        proj_state_df["antisite"] = antisite_sum
 
-        bulk_proj_state_df["adjacent"] = bulk_proj_state_df.iloc[:,0] + bulk_proj_state_df.iloc[:,
-                                                                        1] + bulk_proj_state_df.iloc[:, 2]
-        bulk_proj_state_df["antisite"] = bulk_proj_state_df.iloc[:,3]
+        adjacent_sum = bulk_proj_state_df.iloc[:, :-3].sum(axis=1)
+        antisite_sum = bulk_proj_state_df.iloc[:, -3]
+        bulk_proj_state_df["adjacent"] = adjacent_sum
+        bulk_proj_state_df["antisite"] = antisite_sum
 
         # proj_state_df.loc[proj_state_df["adjacent"] < 0.01, "adjacent"] = 0
         # proj_state_df.loc[proj_state_df["antisite"] < 0.01, "antisite"] = 0

@@ -1135,9 +1135,10 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
                                            edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df)
     levels.update({"perturbed_level_edge_ir": tuple(perturbed_bandedge_ir)})
-    in_gap_levels = get_in_gap_levels(tot, edge_tol)
 
+    print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(inward, outward):\n{edge_tol}")
     print("D=="*20)
+    in_gap_levels = get_in_gap_levels(tot, edge_tol)
     print("\nTransition (between in-gap levels):\n{}".format(d_df.loc[:, ["up_tran_en", "up_tran_top",
                                                                           'up_tran_bottom', "dn_tran_en",
                                                                           "dn_tran_top", 'dn_tran_bottom']].T))
