@@ -36,7 +36,7 @@ class DosPlotDB:
                 )
             )
 
-        print("dos_1:%s" % self.e["task_id"])
+        print(f"\ndos activated:{self.e['task_id']}")
         self.complete_dos1 = db.get_dos(self.e["task_id"])
         self.cbm_primitive = cbm
         self.vbm_primitive = vbm

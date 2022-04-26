@@ -924,6 +924,7 @@ class DetermineDefectStateV3:
         self.vbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.vbm].index.tolist()
         print("perturbed band edges: (VBM, CBM): ({}/{}, {}/{})".format(self.vbm, self.vbm_index, self.cbm, 
                                                                         self.cbm_index))
+        print(f"perturbed bandgap: {self.cbm - self.vbm}")
 
         proj_state_df = pd.concat(band_proj.values(), ignore_index=False)
         proj_state_df = proj_state_df.fillna(0)
