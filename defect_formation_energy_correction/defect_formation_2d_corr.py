@@ -502,21 +502,22 @@ class FormationEnergy2D:
 
     def __init__(self, bulk_db_files, bulk_entry_filter, defect_db_files, defect_entry_filter,
                  bk_vbm_bg_db_files, bk_vbm_bg_filter):
+        
         bulk_entries = []
         for bulk_db_file in bulk_db_files:
-            bulk_db_col = VaspCalcDb.from_db_file(db_file=bulk_db_file).collection
+            bulk_db_col = VaspCalcDb.from_db_file(db_file=bulk_db_file).collection if type(bulk_db_file) == str else bulk_db_file.collection
             for e in bulk_db_col.find(bulk_entry_filter):
                 bulk_entries.append(e)
 
         defect_entries = []
         for defect_db_file in defect_db_files:
-            defect_db_col = VaspCalcDb.from_db_file(db_file=defect_db_file).collection
+            defect_db_col = VaspCalcDb.from_db_file(db_file=defect_db_file).collection if type(defect_db_file) == str else defect_db_file.collection
             for e in defect_db_col.find(defect_entry_filter):
                 defect_entries.append(e)
 
         bk_vbm_bg_entries = []
         for bk_db_file in bk_vbm_bg_db_files:
-            bk_vbm_bg_db_col = VaspCalcDb.from_db_file(db_file=bk_db_file).collection
+            bk_vbm_bg_db_col = VaspCalcDb.from_db_file(db_file=bk_db_file).collection if type(bk_db_file) == str else bk_db_file.collection
             for e in bk_vbm_bg_db_col.find(bk_vbm_bg_filter):
                 bk_vbm_bg_entries.append(e)
 
@@ -524,6 +525,8 @@ class FormationEnergy2D:
         pd2 = pd.DataFrame({"defect_id": [i["task_id"] for i in defect_entries]})
         pd3 = pd.DataFrame({"bk_vbm_bg": [i["task_id"] for i in bk_vbm_bg_entries]})
         print(pd.concat([pd1, pd2, pd3], axis=1))
+
+
 
         # pd4 = pd.DataFrame({
         #     "task_id": [i["task_id"] for i in defect_entries],
@@ -621,7 +624,7 @@ class FormationEnergy2D:
 
 
     # 6. Get IE0
-    def ionized_energy(self, calc_name, chemsys):
+    def ionized_energy(self, fig_title):
 
         data = []
         for geo, tl in self.tls.items():
@@ -688,7 +691,8 @@ class FormationEnergy2D:
             tot_X = np.array([[1/math.sqrt(i["area"])] for i in IE_A_0])
             tot_y = np.array([[i["IE(A,0)"]] for i in IE_A_0])
             tot = linear_regression(tot_X, tot_y)
-            results.append({"charge": chg, "IE0": tot[0], "alpha": tot[1], "Score":tot[2]})
+            results.append({"charge": chg, "IE0": tot[0], "alpha": tot[1], "Score":tot[2],
+                            "Bandgap_avg": sheet["bandgap"].mean()})
             print(pd.DataFrame([{"IE(S,0)": v, "1/sqrt(A)": k} for k, v in zip(tot_X, tot_y)]))
             print("Intercept:{}, Slop:{}, Score:{}".format(tot[0], tot[1], tot[2]))
 
@@ -709,25 +713,29 @@ class FormationEnergy2D:
             axes[idx+1].set_ylabel(r"$\mathrm{IE(S)\;(eV)}$")
             axes[idx+1].xaxis.set_minor_locator(AutoMinorLocator())
             axes[idx+1].yaxis.set_minor_locator(AutoMinorLocator())
+            # plot text of tot[0] and bandgap at left-bottom side of axes[idx+1]
+            axes[idx+1].text(0.05, 0.1, "IE0:{:.2f}, bandgap:{:.2f}".format(float(tot[0]), sheet["bandgap"].mean()),
+                             transform=axes[idx+1].transAxes)
 
 
         axes[0].set_xlim(left=0)
-        axes[0].set_ylim(bottom=0, top=3)
+        # axes[0].set_ylim(bottom=0, top=3)
         axes[0].set_title("Step 1. for donor state "+r"$\epsilon (+/0)$")
         axes[1].set_xlim(left=0)
-        axes[1].set_ylim(bottom=0, top=3)
+        # axes[1].set_ylim(bottom=0, top=3)
         axes[1].set_title("Step 2. for donor state "+r"$\epsilon (+/0)$")
         axes[2].set_xlim(left=0)
-        axes[2].set_ylim(bottom=0.5, top=3)
+        # axes[2].set_ylim(bottom=0.5, top=3)
         axes[2].set_title("Step 1. for acceptor state "+r"$\epsilon (0/-)$")
         axes[3].set_xlim(left=0)
-        axes[3].set_ylim(bottom=0.5, top=2)
+        # axes[3].set_ylim(bottom=0.5, top=2)
         axes[3].set_title("Step 2. for acceptor state "+r"$\epsilon (0/-)$")
 
         print("**"*20, ",Finally")
         print(pd.DataFrame(results))
-        fig.suptitle(chemsys, fontsize=16)
-        # fig.savefig("/Users/jeng-yuantsai/Research/qubit/plt/{}.eps".format(calc_name), format="eps")
+        fig.suptitle(fig_title, fontsize=16)
+        # fig.savefig("/Users/jeng-yuantsai/Research/project/Scan2dDefect/latest_results/xlsx/2021-11-18/final"
+        #             "/transition_level_PTMC/{}.pdf".format(fig_title), format="pdf")
         plt.show()
         return results
 
@@ -851,8 +859,9 @@ def main():
     regular_antisite("antisiteQubit", "W_Te_Ef_gamma", ["Te-W"])
 
 
-
 if __name__ == '__main__':
     main()
+
+
 
 

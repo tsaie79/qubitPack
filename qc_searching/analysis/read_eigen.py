@@ -743,11 +743,12 @@ class DetermineDefectStateV3:
             self.efermi = efermi_to_defect_vac
 
         else:
-            print("No vacuum alignment!")
             self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
             self.cbm = cbm
             self.vbm = vbm
             self.efermi = self.entry["calcs_reversed"][0]["output"]["efermi"]
+            print(f"\nRead vacuum locpot from defect entry (Perturbed bandedges provided)"
+                  f":{round(self.vacuum_locpot, 3)}\n")
 
 
         # if locpot and self.entry["vacuum_locpot"]:
@@ -912,8 +913,8 @@ class DetermineDefectStateV3:
             except IndexError:
                 print("Threshold of projection is too high!")
 
-        print("defect_levels: {}".format(levels))
-        print("bulk_levels: {}".format(bulk_levels))
+        # print(f"defect_levels:\n{levels}")
+        # print(f"bulk_levels:\n{pd.DataFrame(bulk_levels)}")
 
         state_df = pd.concat(list(channel.values()), ignore_index=False)
         bulk_state_df = pd.concat(list(bulk_channel.values()), ignore_index=False)
@@ -943,14 +944,12 @@ class DetermineDefectStateV3:
         bulk_proj_state_df = bulk_proj_state_df.sort_values(["spin", "band_index", "orbital"], ascending=False)
 
         print("D=="*20)
-        print(proj_state_df)
-        print("D=="*20)
-        print(state_df)
+        print(f"\nDefect levels all range:\n{state_df}")
+        print(f"\nProj. defect levels all range:\n{proj_state_df}")
 
         print("B=="*20)
-        print(bulk_proj_state_df)
-        print("B=="*20)
-        print(bulk_state_df)
+        print(f"\nBulk levels all range:\n{bulk_state_df}")
+        print(f"\nProj. bulk levels all range:\n{bulk_proj_state_df}")
 
         # depict defate states
         dist_from_vbm = state_df["energy"] - self.vbm
