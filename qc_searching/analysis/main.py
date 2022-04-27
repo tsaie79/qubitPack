@@ -238,7 +238,6 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         up_band_idx = tot_df.loc[up_condition, "band_index"]
         dn_band_idx = tot_df.loc[dn_condition, "band_index"]
         
-        #if d_df
         if d_df is not None:
             up_tran_en = d_df.loc[:, "up_tran_en"][0]
             dn_tran_en = d_df.loc[:, "dn_tran_en"][0]
@@ -540,7 +539,7 @@ def get_in_gap_transition(tot_df, edge_tol):
         transition_dict.update({"triplet_from": "dn"})
 
     # Calculate plausible optical transition energy
-    if not up_tran_df["n_occ_e"].empty and len(up_tran_df) > 0:
+    if not up_tran_df["n_occ_e"].empty and len(up_tran_df) > 1:
         dE_ups = -1*np.diff(up_tran_df["dist_from_vbm"])
         for idx, dE_up in enumerate(dE_ups):
             if (
@@ -1072,7 +1071,7 @@ def get_defect_state_v2(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
 def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
                         threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None,
-                        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25)) -> object:
+                        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
     "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
@@ -1087,7 +1086,7 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     tot, proj, bulk_tot, bulk_proj = can.get_candidates(
         0,
         threshold=threshold,
-        select_bands=None
+        select_bands=selected_bands
     )
     # print("checking!"*20, bulk_tot.loc[(bulk_tot["spin"] == "-1") & (bulk_tot.index>=209) & (bulk_tot.index<=216)])
     # print("checking!"*20, tot.loc[(tot["spin"] == "-1") & (tot.index>=209) & (tot.index<=216)])

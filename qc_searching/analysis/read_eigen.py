@@ -894,30 +894,34 @@ class DetermineDefectStateV3:
 
                 df[spin], df_proj[spin] = self.sheet(band_info, band_proj, spin)
                 bulk_df[spin], bulk_df_proj[spin] = self.sheet(bulk_band_info, bulk_band_proj, spin)
+                bulk_channel[spin] = bulk_df[spin].sort_index(ascending=False)
+                bulk_band_proj[spin] = bulk_df_proj[spin].sort_index(ascending=False)
+                bulk_levels[spin] = dict(zip(bulk_channel[spin].loc[:, "energy"], bulk_channel[spin].loc[:, "occupied"]))
 
                 if select_bands:
-                    for spin, band in select_bands.items():
-                        channel[spin] = df[spin].loc[band, :].sort_index(ascending=False)
-                        band_proj[spin] = df_proj[spin].loc[band, :].sort_index(ascending=False)
-                        levels[spin] = dict(zip(channel[spin].loc[band:, "energy"], channel[spin].loc[band:, "occupied"]))
+                    channel[spin] = df[spin].loc[select_bands[spin]].sort_index(ascending=False)
+                    band_proj[spin] = df_proj[spin].loc[select_bands[spin]].sort_index(ascending=False)
+                    levels[spin] = dict(zip(channel[spin].loc[select_bands[spin], "energy"],
+                                            channel[spin].loc[select_bands[spin], "occupied"]))
                 else:
                     channel[spin] = df[spin].sort_index(ascending=False)
-                    bulk_channel[spin] = bulk_df[spin].sort_index(ascending=False)
+                    # bulk_channel[spin] = bulk_df[spin].sort_index(ascending=False)
 
                     band_proj[spin] = df_proj[spin].sort_index(ascending=False)
-                    bulk_band_proj[spin] = bulk_df_proj[spin].sort_index(ascending=False)
+                    # bulk_band_proj[spin] = bulk_df_proj[spin].sort_index(ascending=False)
 
                     levels[spin] = dict(zip(channel[spin].loc[:, "energy"], channel[spin].loc[:, "occupied"]))
-                    bulk_levels[spin] = dict(zip(bulk_channel[spin].loc[:, "energy"], bulk_channel[spin].loc[:, "occupied"]))
+                    # bulk_levels[spin] = dict(zip(bulk_channel[spin].loc[:, "energy"], bulk_channel[spin].loc[:, "occupied"]))
 
             except IndexError:
                 print("Threshold of projection is too high!")
 
         # print(f"defect_levels:\n{levels}")
         # print(f"bulk_levels:\n{pd.DataFrame(bulk_levels)}")
-
         state_df = pd.concat(list(channel.values()), ignore_index=False)
+        print(f"state_df:\n{state_df}")
         bulk_state_df = pd.concat(list(bulk_channel.values()), ignore_index=False)
+        print(f"bulk_state_df:\n{bulk_state_df}")
         self.cbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 0, "energy"].min()
         self.cbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.cbm].index.tolist()
         self.vbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 1, "energy"].max()
