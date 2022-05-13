@@ -459,11 +459,8 @@ def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, 
                     shutil.rmtree(dir_path)
                     print(f"removing: {dir_path}")
 
-        print(f"removing: {db.db_name}/{db.collection.name}/{task_id}")
-        db.collection.delete_one({"task_id": task_id})
-
-    else:
-        db.collection.delete_one({"task_id":task_id})
+    print(f"removing: {db.db_name}/{db.collection.name}/{task_id}")
+    db.collection.delete_one({"task_id": task_id})
 
 def get_lowest_unocc_band_idx(task_id, db_obj, nbands, prevent_JT=True, second_excite=False):
 
