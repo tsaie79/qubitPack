@@ -410,6 +410,7 @@ def get_interpolate_sts(i_st, f_st, disp_range=np.linspace(0, 2, 11), output_dir
 
 
 def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, remove_dir=None):
+    from bson.objectid import ObjectId
     """
     remove entry and all Gridfs files in db
 
@@ -417,30 +418,37 @@ def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, 
     db = db_object
     entry = db.collection.find_one({"task_id":task_id})
 
+    def remove_fs_files(fs_collection, fs_id):
+        d = db.db[fs_collection]
+        if "chunks" in fs_collection:
+            print(f"removing: {d.name}, files_id: {d.find_one({'files_id':fs_id})['files_id']} found!")
+            d.delete_one({"files_id": v})
+        else:
+            print(f"removing: {d.name}, _id: {d.find_one({'_id':fs_id})['_id']} found!")
+            d.delete_one({"_id": v})
+
     if pmg_file:
         remove_dict = {}
         for i in list(entry["calcs_reversed"][0].keys()):
             if "fs" in i:
-                print(f"removing {i}")
-                chunks = i.rsplit("_", 1)[0] + ".chunks"
-                remove_dict[chunks] = entry["calcs_reversed"][0][i]
                 files = i.rsplit("_", 1)[0] + ".files"
                 remove_dict[files] = entry["calcs_reversed"][0][i]
 
+                chunks = i.rsplit("_", 1)[0] + ".chunks"
+                remove_dict[chunks] = entry["calcs_reversed"][0][i]
+
         if delete_fs_only:
             for k, v in remove_dict.items():
-                d = db.db[k]
                 try:
-                    d.collection.delete_one({"_id": v})
+                    remove_fs_files(k, v)
                 except Exception as err:
                     print(err)
                     continue
 
         else:
             for k, v in remove_dict.items():
-                d = db.db[k]
                 try:
-                    d.collection.delete_one({"_id": v})
+                    remove_fs_files(k, v)
                 except Exception as err:
                     print(err)
                     continue
@@ -450,7 +458,7 @@ def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, 
                 shutil.rmtree(dir_path)
                 print("removed {}".format(dir_path))
 
-            db.collection.delete_one({"task_id": task_id})
+            # db.collection.delete_one({"task_id": task_id})
             print("removed {}/{}/{}".format(db.db_name, db.collection.name, task_id))
 
     else:
