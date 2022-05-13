@@ -410,7 +410,7 @@ def get_interpolate_sts(i_st, f_st, disp_range=np.linspace(0, 2, 11), output_dir
 
 
 def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, remove_dir=None):
-    from bson.objectid import ObjectId
+
     """
     remove entry and all Gridfs files in db
 
@@ -455,11 +455,12 @@ def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, 
 
             if remove_dir:
                 dir_path = os.path.join(remove_dir, db.db_name, db.collection.name, entry["dir_name"].split("/")[-1])
-                shutil.rmtree(dir_path)
-                print("removed {}".format(dir_path))
+                if input(f"removing: {dir_path}? (y/n)").lower() == "y":
+                    shutil.rmtree(dir_path)
+                    print(f"removing: {dir_path}")
 
-            # db.collection.delete_one({"task_id": task_id})
-            print("removed {}/{}/{}".format(db.db_name, db.collection.name, task_id))
+            print(f"removing: {db.db_name}/{db.collection.name}/{task_id}")
+            db.collection.delete_one({"task_id": task_id})
 
     else:
         db.collection.delete_one({"task_id":task_id})
