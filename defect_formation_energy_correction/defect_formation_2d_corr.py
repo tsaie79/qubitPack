@@ -604,14 +604,17 @@ class FormationEnergy2D:
                 "vbm": [i.parameters["vbm"] for i in defect_entry_obj],
                 "bandgap": [i.parameters["bandgap"] for i in defect_entry_obj]
             }).sort_values(["nsites", "Lz", "charge_state"])
+            print("=="*50, "Run DefectPhaseDiagram")
             print("\n{}".format(pd4))
-
             dpd = DefectPhaseDiagram(
                 defect_entry_obj,
                 vbm=defect_entry_obj[0].as_dict()["parameters"]["vbm"],
-                band_gap=defect_entry_obj[0].as_dict()["parameters"]["bandgap"]
+                band_gap=defect_entry_obj[0].as_dict()["parameters"]["bandgap"],
             )
-            print('transition levels:{}'.format(dpd.transition_level_map))
+            print(f'\ntransition levels:{dpd.transition_level_map}')
+            print(f"\nstable_charges:{dpd.stable_charges}")
+            print(f"\nsuggest_charges:{dpd.suggest_charges()}")
+
 
             p = dpd.plot(ylim=None, ax_fontsize=1.3, fermi_level=None, title=geo)
             p.show()
@@ -645,19 +648,16 @@ class FormationEnergy2D:
         def linear_regression(X, y):
             regr = LinearRegression()
             regr.fit(X, y)
-            print("==" * 50, "linear regression")
-            # print("alpha:{}, beta:{}, IE0:{}, score:{}".format(regr.coef_[0], regr.coef_[1], regr.intercept_,
-            #                                                    regr.score(X, y)))
             return regr.intercept_, regr.coef_[0], "{:.2%}".format(regr.score(X,y)), regr.predict,
-
-        fig, axes = plt.subplots(4,1,figsize=(5,8))
-        fig.subplots_adjust(hspace=1, wspace=1)
 
         areas = np.sort(pd_data.area.unique())
         charge = pd_data.charge.unique()
+        fig, axes = plt.subplots(len(charge)*2,1,figsize=(5,len(charge)*4))
+        fig.subplots_adjust(hspace=1, wspace=1)
         results = []
         for idx, chg in enumerate(charge):
             idx *= 2
+            print(f"\nidx:{idx}, chg:{chg}")
             IE_A_0 = []
             for i in areas:
                 sheet = pd_data[pd_data["area"] == i]
@@ -666,18 +666,16 @@ class FormationEnergy2D:
                 if chg[0] * chg[1] == 0 and (chg[0] < 0 or chg[1] < 0):
                     A_y = sheet[sheet["charge"] == chg]["transition energy"]
                 elif chg[0] * chg[1] == 0 and (chg[0] > 0 or chg[1] > 0):
-                    print("right!!")
                     A_y = sheet[sheet["charge"] == chg]["bandgap"] - sheet[sheet["charge"] == chg]["transition energy"]
-                elif (chg[0]*chg[1] < 0):
+                elif chg[0] < 0 or chg[1] < 0:
                     A_y = sheet[sheet["charge"] == chg]["transition energy"]
-                elif (chg[0]*chg[1] > 0):
-                    A_y = sheet[sheet["charge"] == chg]["transition energy"]
+                elif chg[0] > 0 or chg[1] > 0:
+                    A_y = sheet[sheet["charge"] == chg]["bandgap"] - sheet[sheet["charge"] == chg]["transition energy"]
                 try:
+                    print("=" * 30, "Step 1")
                     A_result = linear_regression(A_X, A_y)
-                    #plot
-                    print(i)
                     area = dict(zip(areas, ["4X4", "5X5", "6X6"]))
-                    colors = dict(zip(areas, ["forestgreen", "dodgerblue", "darkorange"]))
+                    colors = dict(zip(areas, ["darkorange", "dodgerblue", "forestgreen"]))
                     axes[idx].plot(A_X, A_y, "o", color=colors[i], label=area[i])
                     axes[idx].plot(np.append(np.array([[0]]), A_X, axis=0),
                                    A_result[-1](np.append(np.array([[0]]), A_X, axis=0)), color=colors[i],
@@ -685,23 +683,28 @@ class FormationEnergy2D:
                 except Exception as err:
                     print(err)
                     continue
-                print(pd.DataFrame([{"IE":v, "lz":k} for k, v in zip(A_X, A_y)]))
-                print("IE(A,0):{}, beta:{}".format(A_result[0], A_result[1]*i))
+                print(f"area:{i}, charge:{chg}, IE0:{A_result[0]}, beta:{A_result[1]*i}, score:{A_result[2]}\n")
                 IE_A_0.append({"area": i, "IE(A,0)": A_result[0], "beta": A_result[1]*i})
             tot_X = np.array([[1/math.sqrt(i["area"])] for i in IE_A_0])
             tot_y = np.array([[i["IE(A,0)"]] for i in IE_A_0])
+            print("=" * 30, "Step 2")
             tot = linear_regression(tot_X, tot_y)
             results.append({"charge": chg, "IE0": tot[0], "alpha": tot[1], "Score":tot[2],
                             "Bandgap_avg": sheet["bandgap"].mean()})
             print(pd.DataFrame([{"IE(S,0)": v, "1/sqrt(A)": k} for k, v in zip(tot_X, tot_y)]))
-            print("Intercept:{}, Slop:{}, Score:{}".format(tot[0], tot[1], tot[2]))
+            print("Intercept:{}, Slop:{}, Score:{}\n".format(tot[0], tot[1], tot[2]))
 
             # plot
-            colors = ["forestgreen", "dodgerblue", "darkorange"]
+            colors = ["darkorange", "dodgerblue", "forestgreen"]
             axes[idx+1].plot(np.append(np.array([[0]]), tot_X, axis=0),
                              tot[-1](np.append(np.array([[0]]), tot_X, axis=0)), linestyle="dotted", color="black")
             for x, y, color in zip(tot_X, tot_y, colors):
                 axes[idx+1].plot(x, y, "o", color=color)
+
+            axes[idx].set_xlim(left=0)
+            axes[idx+1].set_xlim(left=0)
+            axes[idx].set_title(rf"Step 1. $\epsilon{chg}$")
+            axes[idx+1].set_title(rf"Step 2. $\epsilon{chg}$")
 
             axes[idx].set_xlabel(r"$\mathrm{L_z\;(\AA)}$")
             axes[idx].set_ylabel(r"$\mathrm{IE(S, L_z)\;(eV)}$")
@@ -718,18 +721,18 @@ class FormationEnergy2D:
                              transform=axes[idx+1].transAxes)
 
 
-        axes[0].set_xlim(left=0)
-        # axes[0].set_ylim(bottom=0, top=3)
-        axes[0].set_title("Step 1. for donor state "+r"$\epsilon (+/0)$")
-        axes[1].set_xlim(left=0)
-        # axes[1].set_ylim(bottom=0, top=3)
-        axes[1].set_title("Step 2. for donor state "+r"$\epsilon (+/0)$")
-        axes[2].set_xlim(left=0)
-        # axes[2].set_ylim(bottom=0.5, top=3)
-        axes[2].set_title("Step 1. for acceptor state "+r"$\epsilon (0/-)$")
-        axes[3].set_xlim(left=0)
-        # axes[3].set_ylim(bottom=0.5, top=2)
-        axes[3].set_title("Step 2. for acceptor state "+r"$\epsilon (0/-)$")
+        # axes[0].set_xlim(left=0)
+        # # axes[0].set_ylim(bottom=0, top=3)
+        # axes[0].set_title("Step 1. for donor state "+r"$\epsilon (+/0)$")
+        # axes[1].set_xlim(left=0)
+        # # axes[1].set_ylim(bottom=0, top=3)
+        # axes[1].set_title("Step 2. for donor state "+r"$\epsilon (+/0)$")
+        # axes[2].set_xlim(left=0)
+        # # axes[2].set_ylim(bottom=0.5, top=3)
+        # axes[2].set_title("Step 1. for acceptor state "+r"$\epsilon (0/-)$")
+        # axes[3].set_xlim(left=0)
+        # # axes[3].set_ylim(bottom=0.5, top=2)
+        # axes[3].set_title("Step 2. for acceptor state "+r"$\epsilon (0/-)$")
 
         print("**"*20, ",Finally")
         print(pd.DataFrame(results))

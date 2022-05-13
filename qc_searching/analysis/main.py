@@ -1214,14 +1214,14 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
 class RunDefectState:
     @classmethod
-    def get_defect_state_with_ir(cls):
+    def get_defect_state_with_ir(cls, taskid):
         from qubitPack.tool_box import get_db
 
         from pymatgen import Structure
         import os
         from matplotlib import pyplot as plt
 
-        defect_taskid = 13
+        defect_taskid = taskid
         defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
 
@@ -1243,7 +1243,7 @@ class RunDefectState:
             is_vacuum_aligment_on_plot=True,
             edge_tol=(0.5, 0.5), # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
-            ir_db=None, #host_db,
+            ir_db=host_db,
             ir_entry_filter={"prev_fw_taskid": defect_taskid},
         )
 
@@ -1253,38 +1253,44 @@ class RunDefectState:
         return tot, proj, d_df, levels, defect_levels
 
     @classmethod
-    def get_defect_state_without_ir(cls, defect_taskid, host_taskid, defect_col, host_col, vbm_dx=0, cbm_dx=0):
-        from qubitPack.qc_searching.analysis.main import get_defect_state_v1
+    def get_defect_state_without_ir(cls, defect_taskid):
         from qubitPack.tool_box import get_db
+
         from pymatgen import Structure
         import os
+        from matplotlib import pyplot as plt
 
-        defect_db = get_db("antisiteQubit", defect_col, port=12345)
-        host_db = get_db("owls", host_col, port=12345)
-        c2db = get_db("2dMat_from_cmr_fysik", "2dMaterial_v1", port=12345, user="readUser", password="qiminyan")
+        defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
+        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
 
-        tk_id = defect_taskid
+        # host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
 
-        # pc_from_id = defect_db.collection.find_one({"task_id": tk_id})["pc_from"]
-        # c2db_uid = host_db.collection.find_one({"task_id": pc_from_id})["c2db_info"]["uid"]
+        defect = defect_db.collection.find_one({"task_id": defect_taskid})
 
-        tot, proj, d_df, levels = get_defect_state_v1(
+        level_info, levels, defect_levels = None, None, None
+        state = get_defect_state_v3(
             defect_db,
             {"task_id": defect_taskid},
             -10, 10,
             None,
-            "all",
-            locpot=(host_db, host_taskid, 0, vbm_dx, cbm_dx),
-            #(get_db("antisiteQubit", "W_S_Ef"), 312, 0.), 591, 593:WS2, 592, 594:WSe2 630:WTe2, 611, :MoS2, 610,
-            # :MoSe2,
-            # 631:MoTe2
-            threshold=0.,
-            locpot_c2db=None, #(c2db, "MoS2-MoS2-NM", 0.387, 1.5),
-            is_vacuum_aligment_on_plot=True
+            "eigen",
+            None,
+            None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
+            0.1,  #0.2
+            locpot_c2db=None,  #(c2db, c2db_uid, 0)
+            is_vacuum_aligment_on_plot=True,
+            edge_tol=(0.5, 1), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            # cbm by 0.025 eV
+            ir_db=None
         )
-        return tot, proj, d_df, levels
+
+        tot, proj, d_df, levels, defect_levels = state
+        level_info = d_df.to_dict("records")[0]
+        plt.show()
+        return tot, proj, d_df, levels, defect_levels
 
 
 if __name__ == '__main__':
-    # tot, proj, d_df, levels  = RunDefectState.get_defect_state_without_ir(744, 4237, "vac_tmd", "mx2_antisite_pc")
-    tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir()
+    # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(1164)
+    for i in [1164, 1165]: #[1092, 1163, 1009, 1095]
+        tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_without_ir(i)

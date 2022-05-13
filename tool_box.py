@@ -421,6 +421,7 @@ def remove_entry_in_db(task_id, db_object, delete_fs_only=False, pmg_file=True, 
         remove_dict = {}
         for i in list(entry["calcs_reversed"][0].keys()):
             if "fs" in i:
+                print(f"removing {i}")
                 chunks = i.rsplit("_", 1)[0] + ".chunks"
                 remove_dict[chunks] = entry["calcs_reversed"][0][i]
                 files = i.rsplit("_", 1)[0] + ".files"
@@ -650,7 +651,7 @@ def get_band_edges_characters(bs, ir_data=None):
 
         return data
 
-def plot_lopot(db, task_id):
+def plot_locpot(db, task_id):
     from matplotlib import pyplot as plt
     locpot = db.collection.find_one({"task_id":task_id})["calcs_reversed"][0]["output"]["locpot"]["2"]
     plt.plot(locpot)
