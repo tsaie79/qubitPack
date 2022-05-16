@@ -502,44 +502,50 @@ class FormationEnergy2D:
 
     def __init__(self, bulk_db_files, bulk_entry_filter, defect_db_files, defect_entry_filter,
                  bk_vbm_bg_db_files, bk_vbm_bg_filter):
+
+        self.bulk_entries = self.get_bulk_entries(bulk_db_files, bulk_entry_filter)
+        self.defect_entries = self.get_defect_entries(defect_db_files, defect_entry_filter)
+        self.bk_vbm_bg_entries = self.get_bk_vbm_bg_entries(bk_vbm_bg_db_files, bk_vbm_bg_filter)
         
+    def get_bulk_entries(self, bulk_db_files, bulk_entry_filter):
         bulk_entries = []
         for bulk_db_file in bulk_db_files:
-            bulk_db_col = VaspCalcDb.from_db_file(db_file=bulk_db_file).collection if type(bulk_db_file) == str else bulk_db_file.collection
+            bulk_db_col = VaspCalcDb.from_db_file(db_file=bulk_db_file).collection \
+                if type(bulk_db_file) == str else bulk_db_file.collection
             for e in bulk_db_col.find(bulk_entry_filter):
                 bulk_entries.append(e)
+        return bulk_entries
 
+    def get_defect_entries(self, defect_db_files, defect_entry_filter):
         defect_entries = []
         for defect_db_file in defect_db_files:
-            defect_db_col = VaspCalcDb.from_db_file(db_file=defect_db_file).collection if type(defect_db_file) == str else defect_db_file.collection
+            defect_db_col = VaspCalcDb.from_db_file(db_file=defect_db_file).collection \
+                if type(defect_db_file) == str else defect_db_file.collection
             for e in defect_db_col.find(defect_entry_filter):
                 defect_entries.append(e)
+        return defect_entries
 
+    def get_bk_vbm_bg_entries(self, bk_vbm_bg_db_files, bk_vbm_bg_filter):
         bk_vbm_bg_entries = []
         for bk_db_file in bk_vbm_bg_db_files:
-            bk_vbm_bg_db_col = VaspCalcDb.from_db_file(db_file=bk_db_file).collection if type(bk_db_file) == str else bk_db_file.collection
+            bk_vbm_bg_db_col = VaspCalcDb.from_db_file(db_file=bk_db_file).collection \
+                if type(bk_db_file) == str else bk_db_file.collection
             for e in bk_vbm_bg_db_col.find(bk_vbm_bg_filter):
                 bk_vbm_bg_entries.append(e)
+        return bk_vbm_bg_entries
+        
+    
+    def get_defect_entry_obj(self, bulk_entries=None, defect_entries=None, bk_vbm_bg_entries=None):
+        bulk_entries = bulk_entries if bulk_entries else self.bulk_entries
+        defect_entries = defect_entries if defect_entries else self.defect_entries
+        bk_vbm_bg_entries = bk_vbm_bg_entries if bk_vbm_bg_entries else self.bk_vbm_bg_entries
 
         pd1 = pd.DataFrame({"bulk": [i["task_id"] for i in bulk_entries]})
         pd2 = pd.DataFrame({"defect_id": [i["task_id"] for i in defect_entries]})
         pd3 = pd.DataFrame({"bk_vbm_bg": [i["task_id"] for i in bk_vbm_bg_entries]})
         print(pd.concat([pd1, pd2, pd3], axis=1))
 
-
-
-        # pd4 = pd.DataFrame({
-        #     "task_id": [i["task_id"] for i in defect_entries],
-        #     "charge_state": [i["charge_state"] for i in defect_entries],
-        #     "nsites":[i["nsites"] for i in defect_entries],
-        #     "Lz":[i["calcs_reversed"][0]["input"]["structure"]["lattice"]["c"] for i in defect_entries],
-        #     "magmom":[i["calcs_reversed"][0]["output"]["outcar"]["total_magnetization"] for i in defect_entries]
-        # }).sort_values(["nsites", "Lz", "charge_state"])
-        # print("\n{}".format(pd4))
-
-        print("bulk_entries: {}, defect_entries: {}, bk_vbm_bg_entries: {}".format(len(bulk_entries), len(defect_entries),
-                                                                                   len(bk_vbm_bg_entries)))
-        self.defect_entry_objects = defaultdict(list)
+        defect_entry_objects = defaultdict(list)
         for bulk, bk_vbm_bg in zip(bulk_entries, bk_vbm_bg_entries):
             nsites = bulk["nsites"]
             lz = bulk["input"]["structure"]["lattice"]["c"]
@@ -568,7 +574,7 @@ class FormationEnergy2D:
                                     "magmom": defect["calcs_reversed"][0]["output"]["outcar"]["total_magnetization"]
                                 }
                             )
-                            self.defect_entry_objects[(area, lz)].append(defect_entry_obj)
+                            defect_entry_objects[(area, lz)].append(defect_entry_obj)
 
                         elif defect["nsites"] == nsites and defect["input"]["structure"]["lattice"]["c"] == lz:
                             d_obj = Substitution(structure=Structure.from_dict(bulk["input"]["structure"]),
@@ -587,23 +593,31 @@ class FormationEnergy2D:
                                     "magmom": defect["calcs_reversed"][0]["output"]["outcar"]["total_magnetization"]
                                 }
                             )
-                            self.defect_entry_objects[(area, lz)].append(defect_entry_obj)
+                            defect_entry_objects[(area, lz)].append(defect_entry_obj)
+        return defect_entry_objects
 
-    def transition_levels(self):
+    def get_transition_levels(self, defect_entry_objects=None):
+
+        defect_entry_objects = defect_entry_objects.copy() if defect_entry_objects else self.get_defect_entry_obj()
+
         # 4. Create DefectPhaseDiagram
         tls_info = defaultdict(dict)
         # show energy
-        for geo, defect_entry_obj in self.defect_entry_objects.items():
+
+        entries = []
+        for geo, defect_entry_obj in defect_entry_objects.items():
             pd4 = pd.DataFrame({
                 "task_id": [i.parameters["task_id"] for i in defect_entry_obj],
                 "charge_state": [i.charge for i in defect_entry_obj],
                 "nsites": [i.parameters["nsites"] for i in defect_entry_obj],
                 "Lz": [i.parameters["Lz"] for i in defect_entry_obj],
                 "magmom": [i.parameters["magmom"] for i in defect_entry_obj],
+                "total_energy": [i.uncorrected_energy for i in defect_entry_obj],
                 "Ef": [i.formation_energy() for i in defect_entry_obj],
                 "vbm": [i.parameters["vbm"] for i in defect_entry_obj],
                 "bandgap": [i.parameters["bandgap"] for i in defect_entry_obj]
             }).sort_values(["nsites", "Lz", "charge_state"])
+            entries.append(pd4)
             print("=="*50, "Run DefectPhaseDiagram")
             print("\n{}".format(pd4))
             dpd = DefectPhaseDiagram(
@@ -622,15 +636,16 @@ class FormationEnergy2D:
                 dict(zip([tuple(sorted(i)) for i in list(dpd.transition_level_map.values())[0].values()],
                          list(dpd.transition_level_map.values())[0].keys()))
 
-        self.tls = tls_info
-        return tls_info
-
+        raw_data = pd.concat(entries).sort_values(["charge_state", "nsites", "Lz"])
+        tls = tls_info
+        return raw_data, tls
 
     # 6. Get IE0
-    def ionized_energy(self, fig_title):
+    def get_ionized_energy(self, fig_title, tls=None):
+        tls = tls if tls else self.get_transition_levels()[1]
 
         data = []
-        for geo, tl in self.tls.items():
+        for geo, tl in tls.items():
             for chg, tl_energy in tl.items():
                 data.append({
                     "charge": chg,
@@ -719,20 +734,6 @@ class FormationEnergy2D:
             # plot text of tot[0] and bandgap at left-bottom side of axes[idx+1]
             axes[idx+1].text(0.05, 0.1, "IE0:{:.2f}, bandgap:{:.2f}".format(float(tot[0]), sheet["bandgap"].mean()),
                              transform=axes[idx+1].transAxes)
-
-
-        # axes[0].set_xlim(left=0)
-        # # axes[0].set_ylim(bottom=0, top=3)
-        # axes[0].set_title("Step 1. for donor state "+r"$\epsilon (+/0)$")
-        # axes[1].set_xlim(left=0)
-        # # axes[1].set_ylim(bottom=0, top=3)
-        # axes[1].set_title("Step 2. for donor state "+r"$\epsilon (+/0)$")
-        # axes[2].set_xlim(left=0)
-        # # axes[2].set_ylim(bottom=0.5, top=3)
-        # axes[2].set_title("Step 1. for acceptor state "+r"$\epsilon (0/-)$")
-        # axes[3].set_xlim(left=0)
-        # # axes[3].set_ylim(bottom=0.5, top=2)
-        # axes[3].set_title("Step 2. for acceptor state "+r"$\epsilon (0/-)$")
 
         print("**"*20, ",Finally")
         print(pd.DataFrame(results))

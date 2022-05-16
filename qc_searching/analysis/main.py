@@ -1260,8 +1260,8 @@ class RunDefectState:
         import os
         from matplotlib import pyplot as plt
 
-        defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
-        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
+        defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
 
         # host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
 
@@ -1279,7 +1279,7 @@ class RunDefectState:
             0.1,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(0.5, 1), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=(.5, .5), # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
             ir_db=None
         )
@@ -1292,5 +1292,5 @@ class RunDefectState:
 
 if __name__ == '__main__':
     # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(1164)
-    for i in [1164, 1165]: #[1092, 1163, 1009, 1095]
+    for i in [585]: #[1092, 1163, 1009, 1095]
         tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_without_ir(i)
