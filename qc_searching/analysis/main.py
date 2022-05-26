@@ -498,7 +498,7 @@ def get_in_gap_levels(tot_df, edge_tol):
     )
     max_len = max([len(v) for v in in_gap_levels.values()])
     padded_in_gap_levels = {k: v + (None,) * (max_len - len(v)) for k, v in in_gap_levels.items()}
-    print(f"\nIn-gap ('edge_tol' def. in-gap) levels:\n"
+    print(f"\nIn-gap levels ('edge_tol' def. in-gap):\n"
           f" {pd.DataFrame(padded_in_gap_levels).T if len(padded_in_gap_levels) > 0 else 'None'}")
     return in_gap_levels
 
@@ -1135,7 +1135,7 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
                                            edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df)
     levels.update({"perturbed_level_edge_ir": tuple(perturbed_bandedge_ir)})
 
-    print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(inward, outward):\n{edge_tol}")
+    print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(loose, strict):\n{edge_tol}")
     print("D=="*20)
     in_gap_levels = get_in_gap_levels(tot, edge_tol)
     print("\nTransition (between in-gap levels):\n{}".format(d_df.loc[:, ["up_tran_en", "up_tran_top",
@@ -1226,7 +1226,7 @@ class RunDefectState:
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
 
         host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
-        
+
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
         
         level_info, levels, defect_levels = None, None, None
