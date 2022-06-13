@@ -1195,11 +1195,17 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
             plt.show()
             site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
             plt.show()
+            print(f"===Antiste {dos_plot.nn[-1]} PDOS"* 10)
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
             plt.show()
+            for nn in dos_plot.nn[:-1]:
+                print(f"===Neighbor {nn} PDOS"* 10)
+                dos_plot.orbital_plot(nn, 2, 2)
+                plt.show()
 
 
-        if path_save_fig:
+
+    if path_save_fig:
             for df, df_name in zip([tot, proj, d_df], ["tot", "proj", "d_state"]):
                 path = os.path.join(path_save_fig, "xlsx", "{}_{}_{}_{}.xlsx".format(
                     can.entry["formula_pretty"],
