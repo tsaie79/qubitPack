@@ -747,6 +747,7 @@ class manageWorflow:
 
 class Ipr:
     def __init__(self, wavecar=None):
+        from vaspwfc import vaspwfc
         self.wav = vaspwfc(wavecar) if wavecar else None
         self.ipr = self.wav.inverse_participation_ratio(norm=True) if wavecar else numpy.load("ipr.npy")
     def get_ipr(self, spin, band_idx):
