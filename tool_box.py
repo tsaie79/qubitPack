@@ -756,15 +756,15 @@ class Ipr:
         return spin, energy, band_idx, ipr
 
     def get_ipr_all_ks(self):
-        ipr_all_ks = {"spin": [], "energy": [], "band_idx": [], "ipr": []}
-        for spin in [0, 1]:
+        ipr_all_ks = {"up": {"energy": [], "band_idx": [], "ipr": []},
+                      "down": {"energy": [], "band_idx": [], "ipr": []}}
+        for spin, spin_name in zip([0, 1], ["up", "down"]):
             for band in range(self.ipr.shape[2]):
                 ipr = self.get_ipr(spin, band)
                 print(f"spin:{ipr[0]}, energy:{round(ipr[1], 4)}, band_id: {ipr[2]} ,ipr:{round(ipr[3], 8)}")
-                ipr_all_ks["spin"].append(ipr[0])
-                ipr_all_ks["energy"].append(round(ipr[1], 4))
-                ipr_all_ks["band_idx"].append(ipr[2])
-                ipr_all_ks["ipr"].append(round(ipr[3], 8))
+                ipr_all_ks[spin_name]["energy"].append(round(ipr[1], 4))
+                ipr_all_ks[spin_name]["band_idx"].append(ipr[2])
+                ipr_all_ks[spin_name]["ipr"].append(round(ipr[3], 8))
         return ipr_all_ks
 
     def get_localized_ks(self, threshold=5e-5):
