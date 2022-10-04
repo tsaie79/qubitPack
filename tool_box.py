@@ -733,3 +733,42 @@ class IOTools:
     def get_diff_btw_dfs(self, df1, df2):
         return  pd.concat([df1,df2]).drop_duplicates(keep=False)
 
+
+
+class manageWorflow:
+    @classmethod
+    def extract_todb_task(cls, fw, db_task_name):
+        todb_tasks = [i for i in fw.tasks if i.fw_name == db_task_name]
+        todb_task = todb_tasks[0]
+        todb_task.update({"calc_dir": fw.launches[-1].launch_dir})
+        fw.tasks = [todb_task]
+        wf = Workflow([fw])
+        return wf
+
+class Ipr:
+    def __init__(self, wavecar=None):
+        self.wav = vaspwfc(wavecar) if wavecar else None
+        self.ipr = self.wav.inverse_participation_ratio(norm=True) if wavecar else numpy.load("ipr.npy")
+    def get_ipr(self, spin, band_idx):
+        ipr = self.ipr[spin][0][band_idx][2]
+        energy = self.ipr[spin][0][band_idx][1]
+        return spin, energy, band_idx, ipr
+
+    def get_ipr_all_ks(self):
+        ipr_all_ks = {"spin": [], "energy": [], "band_idx": [], "ipr": []}
+        for spin in [0, 1]:
+            for band in range(self.ipr.shape[2]):
+                ipr = self.get_ipr(spin, band)
+                print(f"spin:{ipr[0]}, energy:{round(ipr[1], 4)}, band_id: {ipr[2]} ,ipr:{round(ipr[3], 8)}")
+                ipr_all_ks["spin"].append(ipr[0])
+                ipr_all_ks["energy"].append(round(ipr[1], 4))
+                ipr_all_ks["band_idx"].append(ipr[2])
+                ipr_all_ks["ipr"].append(round(ipr[3], 8))
+        return ipr_all_ks
+
+    def get_localized_ks(self, threshold=5e-5):
+        for spin in [0, 1]:
+            for band in range(self.ipr.shape[2]):
+                ipr = self.get_ipr(spin, band)
+                if ipr[-1] >= threshold:
+                    print(f"spin:{spin}, band:{band}, energy:{round(ipr[1], 3)}, ipr:{round(ipr[-1], 8)}")
