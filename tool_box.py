@@ -763,7 +763,7 @@ class Ipr:
                 ipr = self.get_ipr(spin, band)
                 print(f"spin:{ipr[0]}, energy:{round(ipr[1], 4)}, band_id: {ipr[2]} ,ipr:{round(ipr[3], 8)}")
                 ipr_all_ks[spin_name]["energy"].append(round(ipr[1], 4))
-                ipr_all_ks[spin_name]["band_idx"].append(ipr[2])
+                ipr_all_ks[spin_name]["band_idx"].append(ipr[2]+1)
                 ipr_all_ks[spin_name]["ipr"].append(round(ipr[3], 8))
         return ipr_all_ks
 
