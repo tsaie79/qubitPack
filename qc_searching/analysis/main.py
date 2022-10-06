@@ -1,6 +1,6 @@
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DosPlotDB
 from qubitPack.qc_searching.analysis.read_eigen import DetermineDefectState, NewDetermineDefectState,  \
-    DetermineDefectStateV3
+    DetermineDefectStateV3, DetermineDefectStateV4
 from qubitPack.qc_searching.py_energy_diagram.application.defect_levels import EnergyLevel
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DB_CONFIG_PATH
 
@@ -74,7 +74,350 @@ def get_eigen_plot_v1(tot, determine_defect_state_obj, top_texts, is_vacuum_alig
     return levels, fig
 
 
-def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False, edge_tol=(0.25, 0.25), 
+def get_eigen_plot_v2(
+        tot, determine_defect_state_obj, is_vacuum_aligment=False, edge_tol=(0.25, 0.25),
+        eigen_plot_title=None, transition_d_df=None
+        ):
+    vbm, cbm = None, None
+
+    if is_vacuum_aligment:
+        tot["energy"] -= determine_defect_state_obj.vacuum_locpot
+        tot["energy"] = trunc(tot["energy"], 3)
+        print(f"\nDefect levels all range:\n{tot}")
+        vbm = trunc(determine_defect_state_obj.vbm - determine_defect_state_obj.vacuum_locpot, 3)
+        cbm = trunc(determine_defect_state_obj.cbm - determine_defect_state_obj.vacuum_locpot, 3)
+    else:
+        tot["energy"] = trunc(tot["energy"], 3)
+        print(f"\nDefect levels all range:\n{tot}")
+        vbm = trunc(determine_defect_state_obj.vbm, 3)
+        cbm = trunc(determine_defect_state_obj.cbm, 3)
+
+    def plotting(set_vbm, set_cbm, tot_df):
+        from matplotlib.ticker import AutoMinorLocator
+        plt.style.use(['grid'])
+
+        up = tot_df.loc[tot_df["spin"] == "1", "energy"]
+        dn = tot_df.loc[tot_df["spin"] == "-1", "energy"]
+
+        up_deg = tot_df.loc[tot_df["spin"] == "1", "band_degeneracy"]
+        dn_deg = tot_df.loc[tot_df["spin"] == "-1", "band_degeneracy"]
+
+        up_occ = tot_df.loc[tot_df["spin"] == "1", "n_occ_e"]
+        dn_occ = tot_df.loc[tot_df["spin"] == "-1", "n_occ_e"]
+
+        up_ir = tot_df.loc[tot_df["spin"] == "1", "band_ir"]
+        dn_ir = tot_df.loc[tot_df["spin"] == "-1", "band_ir"]
+
+        up_band_id = tot_df.loc[tot_df["spin"] == "1", "band_id"]
+        dn_band_id = tot_df.loc[tot_df["spin"] == "-1", "band_id"]
+
+        fig, ax = plt.subplots(figsize=(12, 11), dpi=300)
+        if up_ir.empty:
+            up_ir = [None for i in up]
+        if up_deg.empty:
+            up_deg = [None for i in up]
+
+        if dn_ir.empty:
+            dn_ir = [None for i in dn]
+        if dn_deg.empty:
+            dn_deg = [None for i in dn]
+
+        ax.bar(0, 2, 1.5, set_vbm - 2, color="deepskyblue", align="edge")
+        ax.bar(0, 2, 1.5, set_cbm, color="orange", align="edge")
+
+        for level, occupied, deg, ir, band_id in zip(up, up_occ, up_deg, up_ir, up_band_id):
+            # dx += 0.2
+            color = None
+            if deg == 1:
+                color = "red"
+            elif deg == 2:
+                color = "blue"
+            elif deg == 3:
+                color = "green"
+            elif deg == 4:
+                color = "yellow"
+            else:
+                color = "black"
+
+            if occupied:
+                ax.hlines(level, 0, 0.5, colors=color)
+                ax.text(0.5, level, "{}".format(band_id), fontsize=12)
+            else:
+                ax.hlines(level, 0, 0.5, colors=color)
+                ax.text(0.5, level, "{}*".format(band_id), fontsize=12)
+
+        up_info = '\n'.join(
+            [
+                "{}/ {}/ {}/ {}/{}".format(level, occupied, deg, ir, band_id) for
+                level, occupied, deg, ir, band_id in zip(up, up_occ, up_deg, up_ir, up_band_id)
+            ]
+        )
+        ax.text(0.05, 0.81, up_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
+
+        for level, occupied, deg, ir, band_id in zip(dn, dn_occ, dn_deg, dn_ir, dn_band_id):
+            color = None
+            if deg == 1:
+                color = "red"
+            elif deg == 2:
+                color = "blue"
+            elif deg == 3:
+                color = "green"
+            elif deg == 4:
+                color = "yellow"
+            else:
+                color = "black"
+
+            if occupied:
+                ax.hlines(level, 1, 1.5, colors=color)
+                ax.text(0.9, level, "{}".format(band_id), fontsize=12)
+            else:
+                ax.hlines(level, 1, 1.5, colors=color)
+                ax.text(0.9, level, "{}*".format(band_id), fontsize=12)
+
+        dn_info = '\n'.join(
+            [
+                "{}/ {}/ {}/ {}/{}".format(level, occupied, deg, ir, band_id) for
+                level, occupied, deg, ir, band_id in zip(dn, dn_occ, dn_deg, dn_ir, dn_band_id)
+            ]
+        )
+        ax.text(0.75, 0.81, dn_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
+
+        ax.set_ylim(set_vbm - 2, set_cbm + 2)
+        ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+        for tick in ax.get_yticklabels():
+            tick.set_fontsize(15)
+
+        ax.tick_params(axis="x", bottom=False, labelbottom=False)
+
+        if is_vacuum_aligment:
+            ax.set_ylabel("Energy relative to vacuum (eV)", fontsize=15)
+        else:
+            ax.set_ylabel("Energy (eV)", fontsize=15)
+        # ax.text(-0.1, 1.05, "{}-{}".format(uid, host_taskid), size=30, transform=ax.transAxes)
+        return fig
+
+    def plotting_v2(set_vbm, set_cbm, tot_df, edge_tol=edge_tol, eigen_plot_title=None, d_df=None):
+        from matplotlib.ticker import AutoMinorLocator
+        # plt.style.use(['grid'])
+
+        in_gap_condition = (tot_df["energy"] >= vbm - edge_tol[0]) & (tot_df["energy"] <= cbm + edge_tol[1])
+        up_condition = (tot_df["spin"] == "1") & in_gap_condition
+        dn_condition = (tot_df["spin"] == "-1") & in_gap_condition
+
+        up = tot_df.loc[up_condition, "energy"]
+        dn = tot_df.loc[dn_condition, "energy"]
+
+        # print colume names of tot_df
+        # print(tot_df.columns)
+        # if tot_df has band_degeneracy column, get the band_degeneracy of each band
+        if "band_degeneracy" in tot_df.columns:
+            up_deg = tot_df.loc[up_condition, "band_degeneracy"]
+            dn_deg = tot_df.loc[dn_condition, "band_degeneracy"]
+        else:
+            up_deg = [None for i in up]
+            dn_deg = [None for i in dn]
+            print("band_degeneracy column not found in tot_df")
+
+        up_occ = tot_df.loc[up_condition, "n_occ_e"]
+        dn_occ = tot_df.loc[dn_condition, "n_occ_e"]
+
+        if "band_ir" in tot_df.columns:
+            up_ir = tot_df.loc[up_condition, "band_ir"]
+            dn_ir = tot_df.loc[dn_condition, "band_ir"]
+        else:
+            up_ir = [None for i in up]
+            dn_ir = [None for i in dn]
+
+        if "band_id" in tot_df.columns:
+            up_band_id = tot_df.loc[up_condition, "band_id"]
+            dn_band_id = tot_df.loc[dn_condition, "band_id"]
+        else:
+            up_band_id = [None for i in up]
+            dn_band_id = [None for i in dn]
+
+        up_band_idx = tot_df.loc[up_condition, "band_index"]
+        dn_band_idx = tot_df.loc[dn_condition, "band_index"]
+
+        if d_df is not None:
+            up_tran_en = d_df.loc[:, "up_tran_en"][0]
+            dn_tran_en = d_df.loc[:, "dn_tran_en"][0]
+            up_tran_bottom = d_df.loc[:, "up_tran_bottom"][0]
+            dn_tran_bottom = d_df.loc[:, "dn_tran_bottom"][0]
+        else:
+            up_tran_en = None
+            dn_tran_en = None
+            up_tran_bottom = None
+            dn_tran_bottom = None
+        # print("up_tran_en: {}".format(up_tran_en))
+        # print("dn_tran_en: {}".format(dn_tran_en))
+        # print("up_tran_bottom: {}".format(up_tran_bottom))
+        # print("dn_tran_bottom: {}".format(dn_tran_bottom))
+
+        fig, ax = plt.subplots(figsize=(12, 11), dpi=300)
+        if eigen_plot_title:
+            ax.set_title(eigen_plot_title)
+
+        ax.bar(0, 2, 1.5, set_vbm - 2, color="deepskyblue", align="edge")
+        ax.bar(0, 2, 1.5, set_cbm, color="orange", align="edge")
+
+        for level, occupied, deg, ir, band_id in zip(up, up_occ, up_deg, up_ir, up_band_id):
+            # dx += 0.2
+            color = None
+            if deg == 1:
+                color = "red"
+            elif deg == 2:
+                color = "blue"
+            elif deg == 3:
+                color = "green"
+            elif deg == 4:
+                color = "yellow"
+            else:
+                color = "black"
+
+            if occupied:
+                if round(occupied, 1) == 0.5:
+                    ax.hlines(level, 0, 0.5, colors=color)
+                    ax.text(0.5, level, "{}%".format(band_id), fontsize=12)
+                else:
+                    ax.hlines(level, 0, 0.5, colors=color)
+                    ax.text(0.5, level, "{}".format(band_id), fontsize=12)
+            else:
+                ax.hlines(level, 0, 0.5, colors=color)
+                ax.text(0.5, level, "{}*".format(band_id), fontsize=12)
+
+        up_info = '\n'.join(
+            [
+                "{}/{}/{}/{}/{}/{}".format(level, occupied, deg, ir, band_id, band_idx) for
+                level, occupied, deg, ir, band_id, band_idx in zip(
+                up, up_occ, up_deg, up_ir, up_band_id,
+                up_band_idx
+                )
+            ]
+        )
+        ax.text(0.05, 0.81, up_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
+
+        if up_tran_en and up_tran_bottom:
+            ax.arrow(
+                x=0.25, y=up_tran_bottom + vbm, dx=0, dy=up_tran_en, width=0.02,
+                length_includes_head=True, facecolor="gray"
+                )
+
+        for level, occupied, deg, ir, band_id in zip(dn, dn_occ, dn_deg, dn_ir, dn_band_id):
+            color = None
+            if deg == 1:
+                color = "red"
+            elif deg == 2:
+                color = "blue"
+            elif deg == 3:
+                color = "green"
+            elif deg == 4:
+                color = "yellow"
+            else:
+                color = "black"
+
+            if occupied:
+                if round(occupied, 1) == 0.5:
+                    ax.hlines(level, 1, 1.5, colors=color)
+                    ax.text(0.9, level, "{}%".format(band_id), fontsize=12)
+                else:
+                    ax.hlines(level, 1, 1.5, colors=color)
+                    ax.text(0.9, level, "{}".format(band_id), fontsize=12)
+            else:
+                ax.hlines(level, 1, 1.5, colors=color)
+                ax.text(0.9, level, "{}*".format(band_id), fontsize=12)
+
+        dn_info = '\n'.join(
+            [
+                "{}/{}/{}/{}/{}/{}".format(level, occupied, deg, ir, band_id, band_idx) for
+                level, occupied, deg, ir, band_id, band_idx in zip(
+                dn, dn_occ, dn_deg, dn_ir, dn_band_id,
+                dn_band_idx,
+                )
+            ]
+        )
+        ax.text(0.75, 0.81, dn_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
+
+        if dn_tran_en and dn_tran_bottom:
+            ax.arrow(
+                x=1.25, y=dn_tran_bottom + vbm, dx=0, dy=dn_tran_en, width=0.02,
+                length_includes_head=True, facecolor="gray"
+                )
+
+        ax.text(0.625, set_vbm - 0.5, "VBM:{}".format(set_vbm), fontsize=12)
+        ax.text(0.625, set_cbm + 0.5, "CBM:{}".format(set_cbm), fontsize=12)
+
+        ax.set_ylim(set_vbm - 2, set_cbm + 2)
+        ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+        for tick in ax.get_yticklabels():
+            tick.set_fontsize(15)
+
+        ax.tick_params(axis="x", bottom=False, labelbottom=False)
+
+        if is_vacuum_aligment:
+            ax.set_ylabel("Energy relative to vacuum (eV)", fontsize=15)
+        else:
+            ax.set_ylabel("Energy (eV)", fontsize=15)
+        # ax.text(-0.1, 1.05, "{}-{}".format(uid, host_taskid), size=30, transform=ax.transAxes)
+        return fig
+
+    # if transition_d_df has all rows with "None" in any column, then return None
+    # transition_d_df.replace(to_replace="None", value=np.nan, inplace=True)
+    if transition_d_df.isnull().values.all() or transition_d_df.empty:
+        fig = plotting_v2(vbm, cbm, tot, eigen_plot_title=eigen_plot_title)
+    else:
+        fig = plotting_v2(vbm, cbm, tot, eigen_plot_title=eigen_plot_title, d_df=transition_d_df)
+
+    if determine_defect_state_obj.save_fig_path:
+        fig.savefig(
+            os.path.join(
+                determine_defect_state_obj.save_fig_path, "defect_states", "{}_{}_{}.defect_states.png".format(
+                    determine_defect_state_obj.entry["formula_pretty"],
+                    determine_defect_state_obj.entry["task_id"],
+                    determine_defect_state_obj.entry["task_label"]
+                )
+                )
+            )
+
+    levels = {}
+    levels.update(
+        {
+            "level_vbm": vbm,
+            "level_cbm": cbm,
+            # if tot has a column of band_degeneracy, then transform it into tuple
+            "level_up_deg": tuple(tot.loc[tot["spin"] == "1", "band_degeneracy"]) if "band_degeneracy" in tot.loc[
+                tot["spin"] == "1"].columns else (),
+            "level_dn_deg": tuple(tot.loc[tot["spin"] == "-1", "band_degeneracy"]) if "band_degeneracy" in tot.loc[
+                tot["spin"] == "-1"].columns else (),
+            "level_up_ir": tuple(tot.loc[tot["spin"] == "1", "band_ir"]) if "band_ir" in tot.loc[
+                tot["spin"] == "1"].columns else (),
+            "level_dn_ir": tuple(tot.loc[tot["spin"] == "-1", "band_ir"]) if "band_ir" in tot.loc[
+                tot["spin"] == "-1"].columns else (),
+            "level_up_energy": tuple(tot.loc[tot["spin"] == "1", "energy"]),
+            "level_dn_energy": tuple(tot.loc[tot["spin"] == "-1", "energy"]),
+            "level_up_occ": tuple(tot.loc[tot["spin"] == "1", "n_occ_e"]),
+            "level_dn_occ": tuple(tot.loc[tot["spin"] == "-1", "n_occ_e"]),
+            "level_up_id": tuple(tot.loc[tot["spin"] == "1", "band_id"]) if "band_id" in tot.loc[
+                tot["spin"] == "1"].columns else (),
+            "level_up_index": tuple(tot.loc[tot["spin"] == "1", "band_index"] + 1),
+            "level_dn_id": tuple(tot.loc[tot["spin"] == "-1", "band_id"]) if "band_id" in tot.loc[
+                tot["spin"] == "-1"].columns else (),
+            "level_dn_index": tuple(tot.loc[tot["spin"] == "-1", "band_index"] + 1),
+        }
+    )
+    # make values of levels a tuple with the max length of levels by padding with None
+    padded_levels = {}
+    for k, v in levels.items():
+        if isinstance(v, tuple):
+            padded_levels[k] = v
+        else:
+            padded_levels[k] = (v,)
+    # make values of levels a tuple with the max length of levels by padding with None
+    max_len = max([len(v) for v in padded_levels.values()])
+    padded_levels = {k: v + (None,) * (max_len - len(v)) for k, v in padded_levels.items()}
+    print(f"\nDefect levels and perturbed bandedges all range:\n{pd.DataFrame(padded_levels).T}")
+    return levels, fig
+
+def get_eigen_plot_v3(tot, determine_defect_state_obj, is_vacuum_aligment=False, edge_tol=(0.25, 0.25),
                       eigen_plot_title=None, transition_d_df=None):
     vbm, cbm = None, None
 
@@ -234,6 +577,13 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
         else:
             up_band_id = [None for i in up]
             dn_band_id = [None for i in dn]
+
+        if "IPR" in tot_df.columns:
+            up_band_ipr = tot_df.loc[up_condition, "IPR"]
+            dn_band_ipr = tot_df.loc[dn_condition, "IPR"]
+        else:
+            up_band_ipr = [None for i in up]
+            dn_band_ipr = [None for i in dn]
         
         up_band_idx = tot_df.loc[up_condition, "band_index"]
         dn_band_idx = tot_df.loc[dn_condition, "band_index"]
@@ -288,8 +638,9 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
 
         up_info = '\n'.join(
             [
-                "{}/ {}/ {}/ {}/{}/{}".format(level, occupied, deg, ir, band_id, band_idx) for
-                level, occupied, deg, ir, band_id, band_idx in zip(up, up_occ, up_deg, up_ir, up_band_id, up_band_idx)
+                "{}/{}/{}/{}/{}/{}/{:.3e}".format(level, occupied, deg, ir, band_id, band_idx, ipr) for
+                level, occupied, deg, ir, band_id, band_idx, ipr in zip(up, up_occ, up_deg, up_ir, up_band_id,
+                                                                   up_band_idx, up_band_ipr)
             ]
         )
         ax.text(0.05, 0.81, up_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
@@ -324,8 +675,9 @@ def get_eigen_plot_v2(tot, determine_defect_state_obj, is_vacuum_aligment=False,
 
         dn_info = '\n'.join(
             [
-                "{}/ {}/ {}/ {}/ {}/ {}".format(level, occupied, deg, ir, band_id, band_idx) for
-                level, occupied, deg, ir, band_id, band_idx in zip(dn, dn_occ, dn_deg, dn_ir, dn_band_id, dn_band_idx)
+                "{}/{}/{}/{}/{}/{}/{:.3e}".format(level, occupied, deg, ir, band_id, band_idx, ipr) for
+                level, occupied, deg, ir, band_id, band_idx, ipr in zip(dn, dn_occ, dn_deg, dn_ir, dn_band_id,
+                                                                   dn_band_idx, dn_band_ipr)
             ]
         )
         ax.text(0.75, 0.81, dn_info, transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black'), size=12)
@@ -1218,6 +1570,181 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     return tot, proj, d_df, levels, in_gap_levels
 
 
+def get_defect_state_v4(
+        db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
+        threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None,
+        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None
+        ) -> object:
+    """
+    When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
+    "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
+    tsaie79 localhost:2222/2DmaterialQuantumComputing"
+    """
+
+    can = DetermineDefectStateV4(
+        db=db, db_filter=db_filter, cbm=cbm, vbm=vbm, save_fig_path=path_save_fig,
+        locpot=locpot,
+        locpot_c2db=locpot_c2db
+        )
+    perturbed_bandgap = can.cbm - can.vbm
+    # define defect states and bulk states
+    tot, proj, bulk_tot, bulk_proj = can.get_candidates(
+        0,
+        threshold=threshold,
+        select_bands=selected_bands
+    )
+    # print("checking!"*20, bulk_tot.loc[(bulk_tot["spin"] == "-1") & (bulk_tot.index>=209) & (bulk_tot.index<=216)])
+    # print("checking!"*20, tot.loc[(tot["spin"] == "-1") & (tot.index>=209) & (tot.index<=216)])
+
+    top_texts = None
+    top_texts_for_d_df = None
+    perturbed_bandedge_ir = []
+
+    if ir_db and ir_entry_filter:
+        print("IR information activated!")
+        tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+
+        bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
+        bandedge_bulk_tot, bandedge_bulk_ir_entry = get_ir_info(bandedge_bulk_tot, ir_db, ir_entry_filter)
+        print("B==" * 20)
+        print(f"\nBand edges with IRs:\n{bandedge_bulk_tot}")
+
+        perturbed_bandedge_ir.append(
+            bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.vbm_index[0],
+                                  "band_ir"].iloc[0].split(" ")[0]
+            )
+        perturbed_bandedge_ir.append(
+            bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.cbm_index[0],
+                                  "band_ir"].iloc[0].split(" ")[0]
+            )
+        # print("%%"* 20)
+        # print(tot.columns)
+        if ir_entry:
+            top_texts = {"1": [], "-1": []}
+            top_texts_for_d_df = {"1": [], "-1": []}
+            for spin in ["1", "-1"]:
+                ir_info = tot.loc[tot["spin"] == spin]
+                for band_id, band_degeneracy, band_ir in zip(
+                        ir_info["band_id"], ir_info["band_degeneracy"],
+                        ir_info["band_ir"]
+                        ):
+                    info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+                    top_texts[spin].append(info)
+                top_texts[spin] = top_texts[spin]
+
+                ir_info_for_d_df = tot.loc[(tot["spin"] == spin) & (tot["energy"] > can.vbm) & (tot["energy"] <
+                                                                                                can.cbm)]
+                for band_id, band_degeneracy, band_ir in zip(
+                        ir_info_for_d_df["band_id"], ir_info_for_d_df[
+                            "band_degeneracy"], ir_info_for_d_df["band_ir"]
+                        ):
+                    info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+                    top_texts_for_d_df[spin].append(info)
+                top_texts_for_d_df[spin] = top_texts_for_d_df[spin]
+
+    print("D==" * 20)
+    d_df = get_in_gap_transition(tot, edge_tol)
+    levels, eigen_plot = get_eigen_plot_v3(
+        tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
+        edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df
+        )
+    levels.update({"perturbed_level_edge_ir": tuple(perturbed_bandedge_ir)})
+
+    print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(loose, strict):\n{edge_tol}")
+    print("D==" * 20)
+    in_gap_levels = get_in_gap_levels(tot, edge_tol)
+    print(
+        "\nTransition (between in-gap levels):\n{}".format(
+            d_df.loc[:, ["up_tran_en", "up_tran_top",
+                         'up_tran_bottom', "dn_tran_en",
+                         "dn_tran_top", 'dn_tran_bottom']].T
+            )
+        )
+
+    if type(clipboard) == tuple:
+        if clipboard[0] == "tot":
+            tot.loc[clipboard[1]].to_clipboard("\t")
+        elif clipboard[0] == "proj":
+            proj.loc[clipboard[1]].to_clipboard("\t")
+    elif type(clipboard) == str:
+        if clipboard == "tot":
+            tot.to_clipboard("\t")
+        elif clipboard == "proj":
+            proj.to_clipboard("\t")
+        else:
+            d_df.to_clipboard("\t")
+
+    if plot:
+        cbm_set, vbm_set = None, None
+        if locpot_c2db or locpot:
+            cbm_set = can.cbm + can.vacuum_locpot
+            vbm_set = can.vbm + can.vacuum_locpot
+            efermi = can.efermi + can.vacuum_locpot
+        else:
+            cbm_set = can.cbm
+            vbm_set = can.vbm
+            efermi = can.efermi
+
+        # dos_plot.nn = [25, 26, 31, 30, 29, 49, 45]
+        if plot == "eigen":
+            plt.show()
+        if plot == "tdos":
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig
+                )
+            tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+            plt.show()
+            print(dos_plot.nn)
+        if plot == "site":
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig
+                )
+            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+            plt.show()
+        if plot == "spd":
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig
+                )
+            spd_dos_plt = dos_plot.spd_plots(energy_upper_bound=2, energy_lower_bound=2)
+            plt.show()
+        if plot == "orbital":
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig
+                )
+            orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
+            plt.show()
+        if plot == "all":
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig
+                )
+            eig_plt = eigen_plot
+            plt.show()
+            tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+            plt.show()
+            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+            plt.show()
+            print(f"===Antiste {dos_plot.nn[-1]} PDOS" * 10)
+            orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
+            plt.show()
+            for nn in dos_plot.nn[:-1]:
+                print(f"===Neighbor {nn} PDOS" * 10)
+                dos_plot.orbital_plot(nn, 2, 2)
+                plt.show()
+
+    if path_save_fig:
+        for df, df_name in zip([tot, proj, d_df], ["tot", "proj", "d_state"]):
+            path = os.path.join(
+                path_save_fig, "xlsx", "{}_{}_{}_{}.xlsx".format(
+                    can.entry["formula_pretty"],
+                    can.entry["task_id"],
+                    can.entry["task_label"],
+                    df_name
+                )
+                )
+            df.to_excel(path)
+
+    return tot, proj, d_df, levels, in_gap_levels
+
 class RunDefectState:
     @classmethod
     def get_defect_state_with_ir(cls, taskid):
@@ -1228,29 +1755,44 @@ class RunDefectState:
         from matplotlib import pyplot as plt
 
         defect_taskid = taskid
-        defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
-        # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
+        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
 
-        host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
+        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
+        defect_db = get_db("Scan2dDefect", "calc_data", port=12347)
+
+        # ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12347)
+
+        # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
+        ir_col = get_db("Scan2dDefect", "ir_data", port=12347)
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
+
+        def find_ir_data(defect_entry, hse=False):
+            defect_taskid = defect_entry["task_id"]
+            if hse:
+                return {"prev_fw_taskid": defect_taskid}
+            else:
+                return {"pc_from_id": defect_entry["pc_from_id"], "defect_name": defect_entry["defect_name"],
+                        "charge_state": defect_entry["charge_state"]}
+
         
         level_info, levels, defect_levels = None, None, None
-        state = get_defect_state_v3(
+        state = get_defect_state_v4(
             defect_db,
             {"task_id": defect_taskid},
             -10, 10,
             None,
-            "eigen",
+            "eign",
             None,
             None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
             0.2,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(0.5, 0.5), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=(1, 1), # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
-            ir_db=host_db,
-            ir_entry_filter={"prev_fw_taskid": defect_taskid},
+            ir_db=ir_col,
+            ir_entry_filter=find_ir_data(defect, hse=False),
         )
 
         tot, proj, d_df, levels, defect_levels = state
@@ -1267,7 +1809,8 @@ class RunDefectState:
         from matplotlib import pyplot as plt
 
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
-        defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
 
         # host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
 
@@ -1282,7 +1825,7 @@ class RunDefectState:
             "eigen",
             None,
             None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
-            0.1,  #0.2
+            0.2,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
             edge_tol=(.5, .5), # defect state will be picked only if it's above vbm by 0.025 eV and below
@@ -1295,8 +1838,62 @@ class RunDefectState:
         plt.show()
         return tot, proj, d_df, levels, defect_levels
 
+    @classmethod
+    def get_defect_state_ipr_with_ir(cls, taskid, threshold):
+        from qubitPack.tool_box import get_db
+
+        from pymatgen import Structure
+        import os
+        from matplotlib import pyplot as plt
+
+        defect_taskid = taskid
+        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
+
+        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
+        defect_db = get_db("Scan2dDefect", "calc_data", port=12347)
+
+        # ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12347)
+
+        # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
+        ir_col = get_db("Scan2dDefect", "ir_data", port=12347)
+
+        defect = defect_db.collection.find_one({"task_id": defect_taskid})
+
+        def find_ir_data(defect_entry, hse=False):
+            defect_taskid = defect_entry["task_id"]
+            if hse:
+                return {"prev_fw_taskid": defect_taskid}
+            else:
+                return {
+                    "pc_from_id": defect_entry["pc_from_id"], "defect_name": defect_entry["defect_name"],
+                    "charge_state": defect_entry["charge_state"]
+                }
+
+        level_info, levels, defect_levels = None, None, None
+        state = get_defect_state_v4(
+            defect_db,
+            {"task_id": defect_taskid},
+            -10, 10,
+            None,
+            "eign",
+            None,
+            None,  # (host_db, host_taskid, 0, vbm_dx, cbm_dx),
+            threshold=threshold,  # 0.2
+            locpot_c2db=None,  # (c2db, c2db_uid, 0)
+            is_vacuum_aligment_on_plot=True,
+            edge_tol=(1, 1),  # defect state will be picked only if it's above vbm by 0.025 eV and below
+            # cbm by 0.025 eV
+            ir_db=ir_col,
+            ir_entry_filter=find_ir_data(defect, hse=False),
+        )
+
+        tot, proj, d_df, levels, defect_levels = state
+        level_info = d_df.to_dict("records")[0]
+        plt.show()
+        return tot, proj, d_df, levels, defect_levels
 
 if __name__ == '__main__':
-    # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(1164)
-    for i in [585]: #[1092, 1163, 1009, 1095]
-        tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_without_ir(i)
+    # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_without_ir(7)
+
+    tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(3257)
