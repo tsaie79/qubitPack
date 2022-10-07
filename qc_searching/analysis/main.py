@@ -1778,7 +1778,7 @@ class RunDefectState:
 
         
         level_info, levels, defect_levels = None, None, None
-        state = get_defect_state_v4(
+        state = get_defect_state_v3(
             defect_db,
             {"task_id": defect_taskid},
             -10, 10,

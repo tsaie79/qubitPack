@@ -1168,8 +1168,6 @@ class DetermineDefectStateV4:
                 df[spin], df_proj[spin] = self.sheet(band_info, band_proj, spin)
                 bulk_df[spin], bulk_df_proj[spin] = self.sheet(bulk_band_info, bulk_band_proj, spin)
                 bulk_channel[spin] = bulk_df[spin].sort_index(ascending=False)
-                print('test'*20, "\n", bulk_channel[spin].loc[:, "IPR"].shape, "\n", bulk_channel[spin].loc[:,
-                                                                                     "energy"].shape)
                 bulk_band_proj[spin] = bulk_df_proj[spin].sort_index(ascending=False)
                 bulk_levels[spin] = dict(zip(bulk_channel[spin].loc[:, "energy"],
                                              [bulk_channel[spin].loc[:, "occupied"],
