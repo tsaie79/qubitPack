@@ -1485,7 +1485,7 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     d_df = get_in_gap_transition(tot, edge_tol)
     levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
                                            edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df)
-    levels.update({"perturbed_level_edge_ir": tuple(perturbed_bandedge_ir)})
+    levels.update({"level_edge_ir": tuple(perturbed_bandedge_ir)})
 
     print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(loose, strict):\n{edge_tol}")
     print("D=="*20)
@@ -1648,7 +1648,7 @@ def get_defect_state_v4(
         tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
         edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df
         )
-    levels.update({"perturbed_level_edge_ir": tuple(perturbed_bandedge_ir)})
+    levels.update({"level_edge_ir": tuple(perturbed_bandedge_ir)})
 
     print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(loose, strict):\n{edge_tol}")
     print("D==" * 20)
@@ -1786,7 +1786,7 @@ class RunDefectState:
             "eign",
             None,
             None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
-            0.2,  #0.2
+            0.15,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
             edge_tol=(1, 1), # defect state will be picked only if it's above vbm by 0.025 eV and below
@@ -1859,7 +1859,6 @@ class RunDefectState:
         ir_col = get_db("Scan2dDefect", "ir_data", port=12347)
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
-
         def find_ir_data(defect_entry, hse=False):
             defect_taskid = defect_entry["task_id"]
             if hse:
@@ -1882,7 +1881,7 @@ class RunDefectState:
             threshold=threshold,  # 0.2
             locpot_c2db=None,  # (c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(1, 1),  # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=(0.5, 0.5),  # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
             ir_db=ir_col,
             ir_entry_filter=find_ir_data(defect, hse=False),
@@ -1891,9 +1890,12 @@ class RunDefectState:
         tot, proj, d_df, levels, defect_levels = state
         level_info = d_df.to_dict("records")[0]
         plt.show()
+        print("=="*20, f"{defect['host_info']['c2db_info']['prototype']}/{defect['pc_from_id']}/{defect['chemsys']}"
+                       f"/{defect['defect_entry']['name']}/{defect['charge_state']}/{defect['task_id']}",
+              "=="*20)
         return tot, proj, d_df, levels, defect_levels
 
 if __name__ == '__main__':
-    # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_without_ir(7)
+    # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(2294)
 
-    tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(3257)
+    tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_ipr_with_ir(1021, 3e-5)
