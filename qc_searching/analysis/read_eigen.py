@@ -1247,6 +1247,290 @@ class DetermineDefectStateV4:
 
         return state_df, proj_state_df, bulk_state_df, bulk_proj_state_df
 
+class DetermineDefectStateV5:
+    def __init__(self, db, db_filter, cbm, vbm, save_fig_path, locpot=None, locpot_c2db=None):
+        """
+        locpot or locpot_c2db (3D tuple): (db_object, task_id/uid, displacement)
+        """
+        self.save_fig_path = save_fig_path
+
+        self.entry = db.collection.find_one(db_filter)
+
+        print("---task_id: %s---" % self.entry["task_id"])
+
+        if locpot_c2db:
+            self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
+            self.entry_host = locpot_c2db[0].collection.find_one({"uid": locpot_c2db[1]})
+            self.vacuum_locpot_host = self.entry_host["evac"]
+            self.cbm = self.entry_host["cbm_hse_nosoc"] + locpot_c2db[2]
+            self.vbm = self.entry_host["vbm_hse_nosoc"] + locpot_c2db[2]
+            efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot + locpot_c2db[2]
+            self.efermi = efermi_to_defect_vac
+
+        elif locpot:
+            self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
+            db_host = locpot[0]
+            if not locpot[1]:
+                self.entry_host = db_host.collection.find_one({"task_id": int(self.entry["pc_from"].split("/")[-1])})
+            else:
+                self.entry_host = db_host.collection.find_one({"task_id": locpot[1]})
+            self.vacuum_locpot_host = max(self.entry_host["calcs_reversed"][0]["output"]["locpot"]["2"])
+            self.cbm = self.entry_host["output"]["cbm"] - self.vacuum_locpot_host + locpot[4] + locpot[2]
+            self.vbm = self.entry_host["output"]["vbm"] - self.vacuum_locpot_host + locpot[3] + locpot[2]
+
+            efermi_to_defect_vac = self.entry["calcs_reversed"][0]["output"]["efermi"] - self.vacuum_locpot_host
+            self.efermi = efermi_to_defect_vac
+
+        else:
+            self.vacuum_locpot = max(self.entry["calcs_reversed"][0]["output"]["locpot"]["2"])
+            self.cbm = cbm
+            self.vbm = vbm
+            self.efermi = self.entry["calcs_reversed"][0]["output"]["efermi"]
+            print(f"\nRead vacuum locpot from defect entry (Perturbed bandedges provided)"
+                  f":{round(self.vacuum_locpot, 3)}\n")
+
+
+        # if locpot and self.entry["vacuum_locpot"]:
+        #     self.vacuum_locpot = self.entry["vacuum_locpot"]["value"]
+        # else:
+        #     self.vacuum_locpot = 0
+
+        # if locpot and self.entry["info_primitive"]["vacuum_locpot_primitive"]:
+        #     self.vacuum_locpot_primitive = self.entry["info_primitive"]["vacuum_locpot_primitive"]["value"]
+        # else:
+        #     self.vacuum_locpot_primitive = 0
+
+        self.nn = self.entry["NN"]
+        self.proj_eigenvals = db.get_proj_eigenvals(self.entry["task_id"])
+        self.eigenvals = db.get_eigenvals(self.entry["task_id"])
+        self.ipr = self.entry["IPR"]
+
+        print("total_mag:{:.3f}".format(self.entry["calcs_reversed"][0]["output"]["outcar"]["total_magnetization"]))
+        print("cbm:{:.3f}, vbm:{:.3f}, efermi:{:.3f}".format(self.cbm,
+                                                             self.vbm,
+                                                             self.efermi,
+                                                             ))
+    def get_ipr(self, spin, energy_range):
+        spin_name = "up" if spin == "1" else "down"
+        ipr = self.ipr[spin_name]["ipr"]
+        energy_level = self.ipr[spin_name]["energy"]
+        ipr_in_range = defaultdict(list)
+        for band_idx, energy in enumerate(energy_level):
+            # (band_index, [energy, occupied])
+            if energy_range[1] > energy > energy_range[0]:
+                ipr_in_range[spin].append(ipr[band_idx])
+        return ipr_in_range
+
+    def get_eigenvals(self, spin, entry_eigenvals, energy_range, kpoint=0):
+        eigenvals = defaultdict(list)
+        for band_idx, i in enumerate(entry_eigenvals[spin][kpoint]):
+            # (band_index, [energy, occupied])
+            if energy_range[1] > i[0] > energy_range[0]:
+                eigenvals[spin].append((band_idx, i))
+        return eigenvals
+
+    def get_promising_state(self, spin, eigenvals, iprs, kpoint=0, threshold=1e-5, threshold_from="IPR"):
+        promising_band = defaultdict(list)
+        bulk_band = defaultdict(list)
+        band_up_proj = []
+        bulk_up_proj = []
+        up = defaultdict(tuple)
+        bulk_up = defaultdict(tuple)
+        if eigenvals.get(spin, None):
+            for band, band_ipr in zip(eigenvals[spin],iprs[spin]):
+                total_proj = 0
+                adj_proj = 0
+                for ion_idx in self.nn:
+                    total_proj += sum(self.proj_eigenvals[spin][kpoint][band[0]][ion_idx])
+                for ion_adj_idx in self.nn[:-1]:
+                    adj_proj += sum(self.proj_eigenvals[spin][kpoint][band[0]][ion_adj_idx])
+                antisite_proj = sum(self.proj_eigenvals[spin][kpoint][band[0]][self.nn[-1]])
+
+                def separte_defect_or_bulk(condition):
+                    if condition:
+                        promising_band[spin].append(
+                            (band[0], band[1], total_proj,
+                             round(adj_proj / 1 * 100, 2),
+                             round(antisite_proj / 1 * 100, 2), band_ipr)
+                            )
+
+                        sheet_procar = defaultdict(list)
+                        for idx, o in enumerate(['s', 'py', 'pz', 'px', 'dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2']):
+                            test = {}
+                            for ion_idx in self.nn:
+                                orbital_proj = self.proj_eigenvals[spin][kpoint][band[0]][ion_idx][idx]
+                                if orbital_proj < 1e-3:
+                                    orbital_proj = None
+                                test.update({ion_idx: orbital_proj})
+                            test.update({"band_index": band[0]})  #
+                            test.update({"spin": spin})  #
+                            test.update({"orbital": o})
+                            band_up_proj.append(test)
+
+                    else:
+                        bulk_band[spin].append((band[0], band[1], total_proj, 0, 0, band_ipr))
+                        # round(adj_proj/total_proj*100,2),
+                        # round(antisite_proj/total_proj*100,2)))
+
+                        for idx, o in enumerate(['s', 'py', 'pz', 'px', 'dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2']):
+                            test = {}
+                            for ion_idx in self.nn:
+                                orbital_proj = self.proj_eigenvals[spin][kpoint][band[0]][ion_idx][idx]
+                                if orbital_proj < 1e-3:
+                                    orbital_proj = None
+                                test.update({ion_idx: orbital_proj})
+                            test.update({"band_index": band[0]})  #
+                            test.update({"spin": spin})  #
+                            test.update({"orbital": o})
+                            bulk_up_proj.append(test)
+                if threshold_from == "tot_proj":
+                    separte_defect_or_bulk(total_proj >= threshold)
+                elif threshold_from == "IPR":
+                    separte_defect_or_bulk(band_ipr >= threshold)
+
+            for i in promising_band[spin]:
+                up[i[0]] = (round(i[1][0], 5), (i[1][1] > 0.4, i[1][1], i[2], i[3], i[4], i[5]))
+
+            for i in bulk_band[spin]:
+                bulk_up[i[0]] = (round(i[1][0], 5), (i[1][1] > 0.4, i[1][1], i[2], i[3], i[4], i[5]))
+        return up, band_up_proj, bulk_up, bulk_up_proj
+
+    def sheet(self, band_info, band_proj, spin):
+        sheet_up = defaultdict(list)
+        sheet_up["band_index"] = list(band_info.keys())
+        sheet_up["energy"] = [i[0] for i in band_info.values()]
+        sheet_up["occupied"] = [i[1][0] for i in band_info.values()]
+        sheet_up["IPR"] = [i[1][5] for i in band_info.values()]
+        sheet_up["tot_proj"] = [i[1][2] for i in band_info.values()]
+        sheet_up["adj_proj"] = [i[1][3] for i in band_info.values()]
+        sheet_up["antisite_proj"] = [i[1][4] for i in band_info.values()]
+        sheet_up["n_occ_e"] = [round(i[1][1], 2) for i in band_info.values()]
+        sheet_up["spin"] = [spin for i in range(len(band_info.keys()))]
+        df_up, df_up_proj = pd.DataFrame(sheet_up), pd.DataFrame(band_proj[spin])
+        if len(sheet_up["band_index"]) != 0:
+            df_up = df_up.set_index(["band_index"])
+            df_up_proj = df_up_proj.set_index(["band_index"])
+        return df_up, df_up_proj
+
+    def get_candidates(self, kpoint=0, threshold=0.2, select_bands=None, threshold_from="IPR"):
+        # find eigenstates with (band_index, [energy, occupation])
+        spins = ["1", "-1"]
+        if self.entry["input"]["incar"].get("ISPIN", None) == 1:
+            spins = ["1"]
+        elif self.entry["input"]["incar"].get("LSORBIT", None):
+            spins = ["1"]
+
+        eigenvals = {}
+
+        band_proj = {}
+        bulk_band_proj = {}
+
+        df = {}
+        df_proj = {}
+        bulk_df = {}
+        bulk_df_proj = {}
+
+        channel = {}
+        bulk_channel = {}
+
+        levels = {}
+        bulk_levels = {}
+        for spin in spins:
+            band_info = {}
+            bulk_band_info = {}
+            try:
+                eigenvals.update(self.get_eigenvals(spin, self.eigenvals, energy_range=[self.vbm, self.cbm], kpoint=kpoint))
+                iprs = self.get_ipr(spin, energy_range=[self.vbm, self.cbm])
+                band_detail, proj, bulk_band_detail, bulk_proj = self.get_promising_state(spin, eigenvals, iprs, kpoint,
+                                                                                          threshold,
+                                                                                          threshold_from=threshold_from)
+                band_proj[spin] = proj
+                bulk_band_proj[spin] = bulk_proj
+
+                band_info.update(band_detail)
+                bulk_band_info.update(bulk_band_detail)
+
+                df[spin], df_proj[spin] = self.sheet(band_info, band_proj, spin)
+                bulk_df[spin], bulk_df_proj[spin] = self.sheet(bulk_band_info, bulk_band_proj, spin)
+                bulk_channel[spin] = bulk_df[spin].sort_index(ascending=False)
+                bulk_band_proj[spin] = bulk_df_proj[spin].sort_index(ascending=False)
+                bulk_levels[spin] = dict(zip(bulk_channel[spin].loc[:, "energy"],
+                                             [bulk_channel[spin].loc[:, "occupied"],
+                                             bulk_channel[spin].loc[:, "IPR"]]))
+
+                if select_bands:
+                    channel[spin] = df[spin].loc[select_bands[spin]].sort_index(ascending=False)
+                    band_proj[spin] = df_proj[spin].loc[select_bands[spin]].sort_index(ascending=False)
+                    levels[spin] = dict(zip(channel[spin].loc[select_bands[spin], "energy"],
+                                            [channel[spin].loc[select_bands[spin], "occupied"],
+                                            channel[spin].loc[:, "IPR"]]))
+                else:
+                    channel[spin] = df[spin].sort_index(ascending=False)
+                    # bulk_channel[spin] = bulk_df[spin].sort_index(ascending=False)
+
+                    band_proj[spin] = df_proj[spin].sort_index(ascending=False)
+                    # bulk_band_proj[spin] = bulk_df_proj[spin].sort_index(ascending=False)
+
+                    levels[spin] = dict(zip(channel[spin].loc[:, "energy"],
+                                            [channel[spin].loc[:, "occupied"],
+                                            channel[spin].loc[:, "IPR"]]))
+                    # bulk_levels[spin] = dict(zip(bulk_channel[spin].loc[:, "energy"], bulk_channel[spin].loc[:, "occupied"]))
+            except IndexError:
+                print("Threshold of projection is too high!")
+
+        # print(f"defect_levels:\n{levels}")
+        # print(f"bulk_levels:\n{pd.DataFrame(bulk_levels)}")
+        state_df = pd.concat(list(channel.values()), ignore_index=False)
+        bulk_state_df = pd.concat(list(bulk_channel.values()), ignore_index=False)
+        self.cbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 0, "energy"].min()
+        self.cbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.cbm].index.tolist()
+        self.vbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 1, "energy"].max()
+        self.vbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.vbm].index.tolist()
+        print("perturbed band edges: (VBM, CBM): ({}/{}, {}/{})".format(self.vbm, self.vbm_index, self.cbm,
+                                                                        self.cbm_index))
+        print(f"perturbed bandgap: {self.cbm - self.vbm}")
+
+        proj_state_df = pd.concat(band_proj.values(), ignore_index=False)
+        proj_state_df = proj_state_df.fillna(0)
+
+        bulk_proj_state_df = pd.concat(bulk_band_proj.values(), ignore_index=False)
+        bulk_proj_state_df = bulk_proj_state_df.fillna(0)
+
+        # sum up to the columns with integer column names
+        adjacent_sum = proj_state_df.copy().iloc[:, :-3].sum(axis=1)
+        antisite_sum = proj_state_df.copy().iloc[:, -3]
+        proj_state_df["adjacent"] = adjacent_sum
+        proj_state_df["antisite"] = antisite_sum
+
+        adjacent_sum = bulk_proj_state_df.iloc[:, :-3].sum(axis=1)
+        antisite_sum = bulk_proj_state_df.iloc[:, -3]
+        bulk_proj_state_df["adjacent"] = adjacent_sum
+        bulk_proj_state_df["antisite"] = antisite_sum
+
+        # proj_state_df.loc[proj_state_df["adjacent"] < 0.01, "adjacent"] = 0
+        # proj_state_df.loc[proj_state_df["antisite"] < 0.01, "antisite"] = 0
+
+        proj_state_df = proj_state_df.sort_values(["spin", "band_index", "orbital"], ascending=False)
+        bulk_proj_state_df = bulk_proj_state_df.sort_values(["spin", "band_index", "orbital"], ascending=False)
+
+        print("D=="*20)
+        print(f"\nDefect levels all range:\n{state_df}")
+        print(f"\nProj. defect levels all range:\n{proj_state_df}")
+
+        print("B=="*20)
+        print(f"\nBulk levels all range:\n{bulk_state_df}")
+        print(f"\nProj. bulk levels all range:\n{bulk_proj_state_df}")
+
+        # depict defate states
+        dist_from_vbm = state_df["energy"] - self.vbm
+        state_df["dist_from_vbm"] = dist_from_vbm.round(3)
+        dist_from_cbm = state_df["energy"] - self.cbm
+        state_df["dist_from_cbm"] = dist_from_cbm.round(3)
+        state_df["band_index"] = state_df.index
+        bulk_state_df["band_index"] = bulk_state_df.index
+
+
+        return state_df, proj_state_df, bulk_state_df, bulk_proj_state_df
 
 if __name__ == '__main__':
     pass
