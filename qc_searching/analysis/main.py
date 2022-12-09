@@ -1,6 +1,6 @@
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DosPlotDB
 from qubitPack.qc_searching.analysis.read_eigen import DetermineDefectState, NewDetermineDefectState,  \
-    DetermineDefectStateV3, DetermineDefectStateV4
+    DetermineDefectStateV3, DetermineDefectStateV4, DetermineDefectStateV5
 from qubitPack.qc_searching.py_energy_diagram.application.defect_levels import EnergyLevel
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DB_CONFIG_PATH
 
@@ -541,7 +541,7 @@ def get_eigen_plot_v3(tot, determine_defect_state_obj, is_vacuum_aligment=False,
 
     def plotting_v2(set_vbm, set_cbm, tot_df, edge_tol=edge_tol, eigen_plot_title=None, d_df=None):
         from matplotlib.ticker import AutoMinorLocator
-        # plt.style.use(['grid'])
+        # plt.styl  e.use(['grid'])
 
         in_gap_condition = (tot_df["energy"] >= vbm-edge_tol[0]) & (tot_df["energy"] <= cbm+edge_tol[1]) 
         up_condition = (tot_df["spin"] == "1") & in_gap_condition
@@ -874,7 +874,7 @@ def get_in_gap_transition(tot_df, edge_tol):
         dn_tran_df = tot_df.loc[dn_condition, ["energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_index"]]
 
     transition_dict = {}
-    
+
     sum_occ_up = 0
     for en_up, occ_up in zip(up_tran_df["dist_from_vbm"], up_tran_df["n_occ_e"]):
         if occ_up > 0.2:
@@ -1447,12 +1447,13 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     top_texts_for_d_df = None
     perturbed_bandedge_ir = []
 
+    bandedge_bulk_tot = None
     if ir_db and ir_entry_filter:
         print("IR information activated!")
         tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
-        
+        bulk_tot, _ = get_ir_info(bulk_tot, ir_db, ir_entry_filter)
+        bulk_tot['energy'] -= can.vacuum_locpot
         bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
-        bandedge_bulk_tot, bandedge_bulk_ir_entry = get_ir_info(bandedge_bulk_tot, ir_db, ir_entry_filter)
         print("B=="*20)
         print(f"\nBand edges with IRs:\n{bandedge_bulk_tot}")
 
@@ -1567,13 +1568,13 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
                 ))
                 df.to_excel(path)
 
-    return tot, proj, d_df, levels, in_gap_levels
+    return tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
 
 
 def get_defect_state_v4(
         db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
         threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None,
-        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None
+        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None, threshold_from="IPR"
         ) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
@@ -1581,17 +1582,18 @@ def get_defect_state_v4(
     tsaie79 localhost:2222/2DmaterialQuantumComputing"
     """
 
-    can = DetermineDefectStateV4(
+    can = DetermineDefectStateV5(
         db=db, db_filter=db_filter, cbm=cbm, vbm=vbm, save_fig_path=path_save_fig,
         locpot=locpot,
-        locpot_c2db=locpot_c2db
+        locpot_c2db=locpot_c2db,
         )
     perturbed_bandgap = can.cbm - can.vbm
     # define defect states and bulk states
     tot, proj, bulk_tot, bulk_proj = can.get_candidates(
         0,
         threshold=threshold,
-        select_bands=selected_bands
+        select_bands=selected_bands,
+        threshold_from=threshold_from
     )
     # print("checking!"*20, bulk_tot.loc[(bulk_tot["spin"] == "-1") & (bulk_tot.index>=209) & (bulk_tot.index<=216)])
     # print("checking!"*20, tot.loc[(tot["spin"] == "-1") & (tot.index>=209) & (tot.index<=216)])
@@ -1603,9 +1605,9 @@ def get_defect_state_v4(
     if ir_db and ir_entry_filter:
         print("IR information activated!")
         tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
-
+        bulk_tot, _ = get_ir_info(bulk_tot, ir_db, ir_entry_filter)
+        bulk_tot["energy"] -= can.vacuum_locpot
         bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
-        bandedge_bulk_tot, bandedge_bulk_ir_entry = get_ir_info(bandedge_bulk_tot, ir_db, ir_entry_filter)
         print("B==" * 20)
         print(f"\nBand edges with IRs:\n{bandedge_bulk_tot}")
 
@@ -1644,6 +1646,7 @@ def get_defect_state_v4(
 
     print("D==" * 20)
     d_df = get_in_gap_transition(tot, edge_tol)
+
     levels, eigen_plot = get_eigen_plot_v3(
         tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
         edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df
@@ -1660,7 +1663,6 @@ def get_defect_state_v4(
                          "dn_tran_top", 'dn_tran_bottom']].T
             )
         )
-
     if type(clipboard) == tuple:
         if clipboard[0] == "tot":
             tot.loc[clipboard[1]].to_clipboard("\t")
@@ -1743,11 +1745,11 @@ def get_defect_state_v4(
                 )
             df.to_excel(path)
 
-    return tot, proj, d_df, levels, in_gap_levels
+    return tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
 
 class RunDefectState:
     @classmethod
-    def get_defect_state_with_ir(cls, taskid):
+    def get_defect_state_with_ir(cls, taskid, localisation):
         from qubitPack.tool_box import get_db
 
         from pymatgen import Structure
@@ -1757,14 +1759,14 @@ class RunDefectState:
         defect_taskid = taskid
         # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
 
-        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
-        defect_db = get_db("Scan2dDefect", "calc_data", port=12347)
+        # defect_db = get_db("Scan2dDefect", "calc_data", port=12349)
 
         # ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12347)
 
-        # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
-        ir_col = get_db("Scan2dDefect", "ir_data", port=12347)
+        ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
+        # ir_col = get_db("Scan2dDefect", "ir_data", port=12349)
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
 
@@ -1777,28 +1779,28 @@ class RunDefectState:
                         "charge_state": defect_entry["charge_state"]}
 
         
-        level_info, levels, defect_levels = None, None, None
+        level_info, levels, defect_levels, bulk_tot, bandedge_bulk_tot = _, _, _, _, _
         state = get_defect_state_v3(
             defect_db,
             {"task_id": defect_taskid},
             -10, 10,
             None,
-            "eign",
+            "eigen",
             None,
             None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
-            0.15,  #0.2
+            localisation,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(1, 1), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=(.5, .5), # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
             ir_db=ir_col,
             ir_entry_filter=find_ir_data(defect, hse=False),
         )
 
-        tot, proj, d_df, levels, defect_levels = state
+        tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
         level_info = d_df.to_dict("records")[0]
         plt.show()
-        return tot, proj, d_df, levels, defect_levels
+        return tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
 
     @classmethod
     def get_defect_state_without_ir(cls, defect_taskid):
@@ -1810,13 +1812,13 @@ class RunDefectState:
 
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
         # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
-        defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
-
+        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
+        defect_db = get_db("antisiteQubit", "vac_tmd", port=12349, user="Jeng_ro")
         # host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
 
-        level_info, levels, defect_levels = None, None, None
+        level_info, levels, defect_levels, bulk_tot, bandedge_bulk_tot = _, _, _, _, _
         state = get_defect_state_v3(
             defect_db,
             {"task_id": defect_taskid},
@@ -1828,18 +1830,17 @@ class RunDefectState:
             0.2,  #0.2
             locpot_c2db=None,  #(c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(.5, .5), # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=(1.5, 1.5), # defect state will be picked only if it's above vbm by 0.025 eV and below
             # cbm by 0.025 eV
             ir_db=None
         )
-
-        tot, proj, d_df, levels, defect_levels = state
+        tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot = state
         level_info = d_df.to_dict("records")[0]
         plt.show()
-        return tot, proj, d_df, levels, defect_levels
+        return tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
 
     @classmethod
-    def get_defect_state_ipr_with_ir(cls, taskid, threshold):
+    def get_defect_state_ipr_with_ir(cls, taskid, threshold, plot="eigen", edge_tol=(0.25, 0.25), threshold_from="IPR"):
         from qubitPack.tool_box import get_db
 
         from pymatgen import Structure
@@ -1847,16 +1848,18 @@ class RunDefectState:
         from matplotlib import pyplot as plt
 
         defect_taskid = taskid
-        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
+        defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12349, user="Jeng_ro")
+        # defect_db = get_db("C2DB_IR_antisite_HSE", "calc_data", port=12347, user="Jeng_ro")
 
-        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
+        # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12349, user="Jeng_ro")
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
-        defect_db = get_db("Scan2dDefect", "calc_data", port=12347)
+        # defect_db = get_db("Scan2dDefect", "calc_data", port=12349)
 
-        # ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12347)
+        # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12349)
+        # ir_col = get_db("Scan2dDefect", "ir_data", port=12349)
+        # ir_col = get_db("C2DB_IR_antisite_HSE", "ir_data", port=12347)
+        ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12349)
 
-        # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
-        ir_col = get_db("Scan2dDefect", "ir_data", port=12347)
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
         def find_ir_data(defect_entry, hse=False):
@@ -1875,27 +1878,127 @@ class RunDefectState:
             {"task_id": defect_taskid},
             -10, 10,
             None,
-            "eign",
+            plot, #"eigen",
             None,
             None,  # (host_db, host_taskid, 0, vbm_dx, cbm_dx),
             threshold=threshold,  # 0.2
             locpot_c2db=None,  # (c2db, c2db_uid, 0)
             is_vacuum_aligment_on_plot=True,
-            edge_tol=(0.5, 0.5),  # defect state will be picked only if it's above vbm by 0.025 eV and below
+            edge_tol=edge_tol,
             # cbm by 0.025 eV
             ir_db=ir_col,
-            ir_entry_filter=find_ir_data(defect, hse=False),
+            ir_entry_filter=find_ir_data(defect, hse=True),
+            threshold_from=threshold_from
         )
 
-        tot, proj, d_df, levels, defect_levels = state
+        tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
         level_info = d_df.to_dict("records")[0]
-        plt.show()
-        print("=="*20, f"{defect['host_info']['c2db_info']['prototype']}/{defect['pc_from_id']}/{defect['chemsys']}"
-                       f"/{defect['defect_entry']['name']}/{defect['charge_state']}/{defect['task_id']}",
-              "=="*20)
-        return tot, proj, d_df, levels, defect_levels
+        # print("=="*20, f"{defect['host_info']['c2db_info']['prototype']}/{defect['pc_from_id']}/{defect['chemsys']}"
+        #                f"/{defect['defect_entry']['name']}/{defect['charge_state']}/{defect['task_id']}",
+        #       "=="*20)
+        return tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
+
+
+    @classmethod
+    def plot_ipr_vs_tot_proj(cls, taskid, threshold=3e-5, defect_plot=None, edge_tol=(.5, .5),
+                             threshold_from="tot_proj"):
+        tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot =\
+            cls.get_defect_state_ipr_with_ir(taskid, threshold, plot=defect_plot, edge_tol=edge_tol, \
+                                                                                          threshold_from=threshold_from)
+        tot_df = tot.copy()
+        bulk_df = bulk_tot.copy()
+        print("tot_df", tot_df)
+        print("bulk_df", bulk_df)
+        # plot scatter of IPRs for spin == 1 and -1 versus energy for tot_df and bulk_df in ax[0]
+        # plot tot_proj for spin == 1 and -1 versus energy for tot_df and bulk_df in ax[1]
+        fig, ax = plt.subplots(1, 2, figsize=(10, 5), dpi=300)
+        for spin in ["1", "-1"]:
+            spin_name = "⬆︎" if spin == "1" else "⬇︎"
+            tot_df_spin = tot_df[tot_df["spin"] == spin]
+            bulk_df_spin = bulk_df[bulk_df["spin"] == spin]
+            print(tot_df_spin)
+            print(bulk_df_spin)
+            ax[0].scatter(tot_df_spin["energy"], tot_df_spin["IPR"], label=f"|defect,{spin_name}>")
+            occupied_dl = tot_df_spin.loc[(tot_df_spin.occupied == True) & (tot_df_spin.energy >= levels["level_vbm"]
+                                                                            - edge_tol[0]) &
+                                      (tot_df_spin.energy <= levels["level_cbm"] + edge_tol[1])]
+
+            ax[0].scatter(occupied_dl["energy"], occupied_dl["IPR"], marker="x", color="black")
+            # mark the occupied defect levels within the vbm-0.25 eV and cbm+0.25 eV range with "x"
+            if spin == "1":
+                #transparent
+                ax[0].scatter(bulk_df_spin["energy"], bulk_df_spin["IPR"], label=f"|bulk,{spin_name}>",
+                              color="purple", alpha=0.2)
+            else:
+                # transparent red
+                ax[0].scatter(bulk_df_spin["energy"], bulk_df_spin["IPR"], label=f"|bulk,{spin_name}>",
+                              color="green", alpha=0.2)
+            ax[1].scatter(tot_df_spin["energy"], tot_df_spin["tot_proj"], label=f"|defect,{spin_name}>")
+            ax[1].scatter(occupied_dl["energy"], occupied_dl["tot_proj"], marker="x", color="black")
+            if spin == "1":
+                ax[1].scatter(bulk_df_spin["energy"], bulk_df_spin["tot_proj"], label=f"|bulk,{spin_name}>",
+                              color="purple", alpha=0.2)
+            else:
+                # transparent red
+                ax[1].scatter(bulk_df_spin["energy"], bulk_df_spin["tot_proj"], label=f"|bulk,{spin_name}>",
+                              color="green", alpha=0.2)
+        ax[0].set_title("IPR")
+        ax[1].set_title("tot_proj")
+
+        for i in range(2):
+            ax[i].legend()
+            ax[i].set_xlabel("energy")
+            # plot two vertical lines for vbm and cbm
+            ax[i].axvline(x=levels["level_vbm"], color="red", linestyle="--")
+            ax[i].axvline(x=levels["level_cbm"], color="red", linestyle="--")
+
+            vbm_row = bandedge_bulk_tot.loc[(bandedge_bulk_tot["energy"] == bandedge_bulk_tot.loc[
+                bandedge_bulk_tot["occupied"] == True, "energy"].max())]
+            cbm_row = bandedge_bulk_tot.loc[(bandedge_bulk_tot["energy"] == bandedge_bulk_tot.loc[
+                bandedge_bulk_tot["occupied"] == False, "energy"].min())]
+            # ax[i].set_xlim(vbm_row["energy"].values[0] - 0.5, cbm_row["energy"].values[0] + 0.5)
+            # plot two points for vbm and cbm
+
+            # plot two points for vbm and cbm for tot_proj
+
+
+            # plot two horizontal lines for IPR of vbm and cbm for IPR plot only and tot_proj for tot_proj plot only
+            if i == 0:
+                ax[i].axhline(y=vbm_row["IPR"].values[0], color="red", linestyle="--")
+                # mark the vbm horizontal line with a text label
+                ax[i].text(vbm_row["energy"].values[0], vbm_row["IPR"].values[0], "VBM", color="red")
+                ax[i].axhline(y=cbm_row["IPR"].values[0], color="red", linestyle="--")
+                # mark the cbm horizontal line with a text label
+                ax[i].text(cbm_row["energy"].values[0], cbm_row["IPR"].values[0], "CBM", color="red")
+                # ax[i].scatter(vbm_row["energy"], vbm_row["IPR"], marker="x", color="black")
+                # ax[i].scatter(cbm_row["energy"], cbm_row["IPR"], marker="x", color="black")
+            else:
+                ax[i].axhline(y=threshold, color="black", linestyle="--")
+                ax[i].axhline(y=vbm_row["tot_proj"].values[0], color="red", linestyle="--")
+                # mark the vbm horizontal line with a text label
+                ax[i].text(vbm_row["energy"].values[0], vbm_row["tot_proj"].values[0], "VBM", color="red")
+                ax[i].axhline(y=cbm_row["tot_proj"].values[0], color="red", linestyle="--")
+                # mark the cbm horizontal line with a text label
+                ax[i].text(cbm_row["energy"].values[0], cbm_row["tot_proj"].values[0], "CBM", color="red")
+                # ax[i].scatter(vbm_row["energy"], vbm_row["tot_proj"], marker="x", color="black")
+                # ax[i].scatter(cbm_row["energy"], cbm_row["tot_proj"], marker="x", color="black")
+                print("vbm_row", vbm_row.loc[:, ["energy", "IPR", "tot_proj", "spin"]])
+                print("cbm_row", cbm_row.loc[:, ["energy", "IPR", "tot_proj", "spin"]])
+                # plot a horizontal line that has the lowest value of tot_proj between vbm_row and cbm_row
+                # ax[i].axhline(y=max(vbm_row["tot_proj"].values[0], cbm_row["tot_proj"].values[0]), color="black",
+                #               linestyle="--")
+
+        #set figure title
+        fig.suptitle(f"taskid: {taskid}")
+        return fig, levels['level_vbm'], levels['level_cbm'], bulk_df, d_df, defect_levels, tot
 
 if __name__ == '__main__':
-    # tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_with_ir(2294)
-
-    tot, proj, d_df, levels, defect_levels = RunDefectState.get_defect_state_ipr_with_ir(1021, 3e-5)
+    # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
+    #     RunDefectState.get_defect_state_without_ir(3022)
+    # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot =\
+    #     RunDefectState.get_defect_state_ipr_with_ir(2922, 1.5e-5, edge_tol=(1,1), threshold_from="IPR")
+    for taskid in [3022]:
+        fig, _, _, bulk_df, d_df, defect_levels, tot = RunDefectState.plot_ipr_vs_tot_proj(taskid=taskid, threshold=0.2,
+                                                                       defect_plot="eigen",
+                                                                 edge_tol=(1, 1))
+        plt.show()
