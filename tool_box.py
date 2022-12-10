@@ -159,7 +159,8 @@ def defect_from_primitive_cell(orig_st, defect_type, natom, substitution=None, d
 
 
 class GenDefect:
-    def __init__(self, orig_st, defect_type, natom, vacuum_thickness=None, distort=None, sub_on_side=None, standardize_st=True):
+    def __init__(self, orig_st, defect_type, natom, vacuum_thickness=None, distort=None, sub_on_side=None,
+                 standardize_st=True, onsite_sub_dict=None, return_pos2aBR=True):
         for site_property in orig_st.site_properties:
             orig_st.remove_site_property(site_property)
         if vacuum_thickness:
@@ -171,7 +172,16 @@ class GenDefect:
         self.vacuum_thickness = vacuum_thickness
         self.distort = None
         self.site_info = None
-        self.defects = ChargedDefectsStructures(self.orig_st, cellmax=natom, antisites_flag=True).defects
+        self.onsite_sub_dict = onsite_sub_dict
+
+        self.defects = ChargedDefectsStructures(
+            self.orig_st, cellmax=natom, antisites_flag=True, substitutions=self.onsite_sub_dict).defects
+
+        if onsite_sub_dict:
+            sub_index = self.find_onsite_sub_index()
+            self.defect_type[1] = sub_index[0]
+            print("Onsite sub. found! Reset index!")
+
         self.bulk_st = self.defects["bulk"]["supercell"]["structure"]
         self.NN_for_sudo_bulk = []
 
@@ -229,7 +239,7 @@ class GenDefect:
             print("!!!Please insert substitutions, vacancies, or bulk!!!")
 
         if standardize_st and self.defect_st:
-            self.defect_st, self.site_info = phonopy_structure(self.defect_st)
+            self.defect_st, self.site_info = phonopy_structure(self.defect_st, return_pos2aBR=return_pos2aBR)
 
         if defect_type[0] == "substitutions":
             self.substitutions(distort, sub_on_side)
@@ -319,6 +329,15 @@ class GenDefect:
 
         self.NN = [self.defect_st.index(nn) for nn in defect_sites_in_bulk]
         self.nn_dist["before"] = dict(zip([str(idx) for idx in self.NN], self.nn_dist["before"].values()))
+
+    def find_onsite_sub_index(self):
+        onsite_sub = ["{}_on_{}".format(sub, site) for site, subs in self.onsite_sub_dict.items() for sub in subs][0]
+        sub_index = []
+        for i in range(len(self.defects["substitutions"])):
+            print(self.defects["substitutions"][i]["name"])
+            if onsite_sub in self.defects["substitutions"][i]["name"]:
+                sub_index.append(i)
+        return sub_index
 
 def get_unique_sites_from_wy(structure, symprec=1e-4):
     space_sym_analyzer = SpacegroupAnalyzer(structure, symprec=symprec)
@@ -518,7 +537,7 @@ def get_lowest_unocc_band_idx_v2(task_id, db_obj, nbands):
     print("up_no_excite_occ: {}, dn_no_excite_occ:{}".format(occu_configs["1"], occu_configs["-1"]))
     return occu_configs["1"], occu_configs["-1"]
 
-def phonopy_structure(orig_st):
+def phonopy_structure(orig_st, return_pos2aBR=True):
     from subprocess import call, check_output, Popen
     import shutil
 
@@ -529,8 +548,11 @@ def phonopy_structure(orig_st):
     call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "))
     std_st = Structure.from_file("PPOSCAR")
     std_st.to("poscar", "POSCAR")
-    pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
-    std_st = Structure.from_file("POSCAR_std")
+    if return_pos2aBR:
+        pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
+        std_st = Structure.from_file("POSCAR_std")
+    else:
+        pos2aBR_out = None
     shutil.rmtree(path)
     return std_st, pos2aBR_out
 
