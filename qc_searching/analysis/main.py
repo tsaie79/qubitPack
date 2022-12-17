@@ -1602,6 +1602,7 @@ def get_defect_state_v4(
     top_texts_for_d_df = None
     perturbed_bandedge_ir = []
 
+    bandedge_bulk_tot = None
     if ir_db and ir_entry_filter:
         print("IR information activated!")
         tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
@@ -1717,7 +1718,8 @@ def get_defect_state_v4(
             plt.show()
         if plot == "all":
             dos_plot = DosPlotDB(
-                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig,
+                sigma=0.1
                 )
             eig_plt = eigen_plot
             plt.show()
@@ -1812,8 +1814,8 @@ class RunDefectState:
 
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
         # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
-        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
-        defect_db = get_db("antisiteQubit", "vac_tmd", port=12349, user="Jeng_ro")
+        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12349, user="Jeng_ro")
+        defect_db = get_db("tmd_defect_cluster", "calc_data", port=12349, user="Jeng_ro")
         # host_db = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12347)
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
@@ -1824,7 +1826,7 @@ class RunDefectState:
             {"task_id": defect_taskid},
             -10, 10,
             None,
-            "eigen",
+            "all",
             None,
             None,  #(host_db, host_taskid, 0, vbm_dx, cbm_dx),
             0.2,  #0.2
@@ -1848,8 +1850,9 @@ class RunDefectState:
         from matplotlib import pyplot as plt
 
         defect_taskid = taskid
-        defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12349, user="Jeng_ro")
+        # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12349, user="Jeng_ro")
         # defect_db = get_db("C2DB_IR_antisite_HSE", "calc_data", port=12347, user="Jeng_ro")
+        defect_db = get_db("tmd_defect_cluster", "calc_data", port=12349, user="Jeng_ro")
 
         # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12349, user="Jeng_ro")
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347)
@@ -1858,7 +1861,8 @@ class RunDefectState:
         # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12349)
         # ir_col = get_db("Scan2dDefect", "ir_data", port=12349)
         # ir_col = get_db("C2DB_IR_antisite_HSE", "ir_data", port=12347)
-        ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12349)
+        # ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12349)
+        ir_col = get_db("tmd_defect_cluster", "ir_data", port=12349, user="Jeng_ro")
 
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
@@ -1886,7 +1890,7 @@ class RunDefectState:
             is_vacuum_aligment_on_plot=True,
             edge_tol=edge_tol,
             # cbm by 0.025 eV
-            ir_db=ir_col,
+            ir_db=ir_col, #ir_col,
             ir_entry_filter=find_ir_data(defect, hse=True),
             threshold_from=threshold_from
         )
@@ -1994,11 +1998,14 @@ class RunDefectState:
 
 if __name__ == '__main__':
     # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
-    #     RunDefectState.get_defect_state_without_ir(3022)
+    #     RunDefectState.get_defect_state_without_ir(1)
     # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot =\
     #     RunDefectState.get_defect_state_ipr_with_ir(2922, 1.5e-5, edge_tol=(1,1), threshold_from="IPR")
-    for taskid in [3022]:
-        fig, _, _, bulk_df, d_df, defect_levels, tot = RunDefectState.plot_ipr_vs_tot_proj(taskid=taskid, threshold=0.2,
-                                                                       defect_plot="eigen",
-                                                                 edge_tol=(1, 1))
+    for taskid in [1]:
+        fig, _, _, bulk_df, d_df, defect_levels, tot = RunDefectState.plot_ipr_vs_tot_proj(
+            taskid=taskid,
+            threshold=0.2,
+            defect_plot="all",
+            threshold_from="tot_proj",
+            edge_tol=(10, 10))
         plt.show()
