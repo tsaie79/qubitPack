@@ -722,6 +722,19 @@ def get_ir_info(band_info, ir_db, ir_entry_filter):
 
     return band_index, list_id, band_ir, band_deg, band_energy, kpoint, k_group, table
 
+class IOVASP:
+    @classmethod
+    def get_dipole_correction_along_z(cls, structure):
+        weights = [s.species.weight for s in structure]
+        center_of_mass = np.average(
+            structure.frac_coords, weights = weights, axis = 0
+        )
+        incar_update = {}
+        incar_update["IDIPOL"] = "3"
+        incar_update["LDIPOL"] = True
+        incar_update["DIPOL"] = "{} {} {}".format(*center_of_mass)
+        return incar_update
+
 class IOTools:
     def __init__(self, cwd, pandas_df= None, excel_file=None, json_file=None):
         self.df = pandas_df
@@ -795,3 +808,5 @@ class Ipr:
                 ipr = self.get_ipr(spin, band)
                 if ipr[-1] >= threshold:
                     print(f"spin:{spin}, band:{band}, energy:{round(ipr[1], 3)}, ipr:{round(ipr[-1], 8)}")
+
+
