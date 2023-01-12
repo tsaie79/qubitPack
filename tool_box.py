@@ -735,6 +735,16 @@ class IOVASP:
         incar_update["DIPOL"] = "{} {} {}".format(*center_of_mass)
         return incar_update
 
+    @classmethod
+    def get_wavecar_plot(cls, wavecar, poscar, band, spin=0, kpoint=0):
+        from pymatgen.io.vasp.outputs import Wavecar
+        from pymatgen.io.vasp.inputs import Poscar
+
+        wv = Wavecar(wavecar)
+        poscar = Poscar.from_file(poscar)
+        chg = wv.get_parchg(poscar=poscar, band=band, spin=spin, phase=True, kpoint=kpoint)
+        chg.write_file(f"band.{i}.vasp")
+
 class IOTools:
     def __init__(self, cwd, pandas_df= None, excel_file=None, json_file=None):
         self.df = pandas_df
