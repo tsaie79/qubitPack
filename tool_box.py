@@ -1,3 +1,5 @@
+import glob
+
 from pymatgen.electronic_structure.core import Spin, Orbital
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.io.vasp.inputs import Poscar, Structure
@@ -736,13 +738,15 @@ class IOVASP:
         return incar_update
 
     @classmethod
-    def get_wavecar_plot(cls, band, wavecar=None, poscar=None, spin=0, kpoint=0, write_file=False):
+    def get_wavecar_plot(cls, bands, wavecar=None, poscar=None, spin=0, kpoint=0, write_file=False):
         from pymatgen.io.vasp.outputs import Wavecar
         from pymatgen.io.vasp.inputs import Poscar
         import subprocess
 
         wv = None
-        if not wavecar:
+        if glob.glob("WAVECAR.CP"):
+            wv = "WAVECAR.CP"
+        elif not wavecar:
             # one line shell command as "gunzip WACECAR.gz" and then "cp WACECAR WACECAR.CP"
             subprocess.call("gunzip WAVECAR.gz", shell=True)
             subprocess.call("cp WAVECAR WAVECAR.CP", shell=True)
