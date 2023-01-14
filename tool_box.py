@@ -738,7 +738,7 @@ class IOVASP:
         return incar_update
 
     @classmethod
-    def get_wavecar_plot(cls, bands, wavecar=None, poscar=None, spin=0, kpoint=0, write_file=False):
+    def get_wavecar_plot(cls, band, wavecar=None, poscar=None, spin=0, kpoint=0, write_file=False):
         from pymatgen.io.vasp.outputs import Wavecar
         from pymatgen.io.vasp.inputs import Poscar
         import subprocess
