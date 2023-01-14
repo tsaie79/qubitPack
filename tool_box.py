@@ -743,7 +743,10 @@ class IOVASP:
 
         wv = None
         if not wavecar:
-            subprocess.call("gunzip WAVCAR.gz && cp WAVECAR WAVECAR.CP && gzip WAVECAR".split(" "), shell=True)
+            # one line shell command as "gunzip WACECAR.gz" and then "cp WACECAR WACECAR.CP"
+            subprocess.call("gunzip WAVECAR.gz", shell=True)
+            subprocess.call("cp WAVECAR WAVECAR.CP", shell=True)
+            subprocess.call("gzip WAVECAR", shell=True)
             wv = "WAVECAR.CP"
         else:
             wv = wavecar
