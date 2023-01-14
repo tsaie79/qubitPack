@@ -739,6 +739,7 @@ class IOVASP:
     def get_wavecar_plot(cls, band, wavecar=None, poscar=None, spin=0, kpoint=0, write_file=False):
         from pymatgen.io.vasp.outputs import Wavecar
         from pymatgen.io.vasp.inputs import Poscar
+        import subprocess
 
         wv = None
         if not wavecar:
