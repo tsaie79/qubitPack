@@ -736,14 +736,30 @@ class IOVASP:
         return incar_update
 
     @classmethod
-    def get_wavecar_plot(cls, wavecar, poscar, band, spin=0, kpoint=0):
+    def get_wavecar_plot(cls, wavecar, poscar, band, spin=0, kpoint=0, write_file=False):
         from pymatgen.io.vasp.outputs import Wavecar
         from pymatgen.io.vasp.inputs import Poscar
 
-        wv = Wavecar(wavecar)
+        wv = None
+        if not wavecar:
+            subprocess.call("gunzip WAVCAR.gz && cp WAVECAR WAVECAR.CP && gzip WAVECAR".split(" "), shell=True)
+            wv = "WAVECAR.CP"
+        else:
+            wv = wavecar
+
+        poscar = None
+        if not poscar:
+            poscar = "POSCAR.gz"
+        else:
+            poscar = poscar
+
+        wv = Wavecar(wv)
         poscar = Poscar.from_file(poscar)
+
         chg = wv.get_parchg(poscar=poscar, band=band, spin=spin, phase=True, kpoint=kpoint)
-        chg.write_file(f"band.{i}.vasp")
+        if write_file:
+            chg.write_file(f"band.{i}.spin.{spin}.kpt.{kpoint}.vasp")
+        return chg
 
 class IOTools:
     def __init__(self, cwd, pandas_df= None, excel_file=None, json_file=None):
