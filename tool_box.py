@@ -542,19 +542,20 @@ def get_lowest_unocc_band_idx_v2(task_id, db_obj, nbands):
 def phonopy_structure(orig_st, return_pos2aBR=True):
     from subprocess import call, check_output, Popen
     import shutil
+    import monty
 
     path = os.path.expanduser(os.path.join("~", "standardize_st"))
     os.makedirs(path, exist_ok=True)
-    os.chdir(path)
-    orig_st.to("poscar", "POSCAR")
-    call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "))
-    std_st = Structure.from_file("PPOSCAR")
-    std_st.to("poscar", "POSCAR")
-    if return_pos2aBR:
-        pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
-        std_st = Structure.from_file("POSCAR_std")
-    else:
-        pos2aBR_out = None
+    with monty.os.cd(path):
+        orig_st.to("poscar", "POSCAR")
+        call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "))
+        std_st = Structure.from_file("PPOSCAR")
+        std_st.to("poscar", "POSCAR")
+        if return_pos2aBR:
+            pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
+            std_st = Structure.from_file("POSCAR_std")
+        else:
+            pos2aBR_out = None
     shutil.rmtree(path)
     return std_st, pos2aBR_out
 
