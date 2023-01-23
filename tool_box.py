@@ -767,7 +767,7 @@ class IOVASP:
 
         chg = wv.get_parchg(poscar=poscar, band=band, spin=spin, phase=True, kpoint=kpoint)
         if write_file:
-            chg.write_file(f"band.{i}.spin.{spin}.kpt.{kpoint}.vasp")
+            chg.write_file(f"band.{band}.spin.{spin}.kpt.{kpoint}.vasp")
         return chg
 
 class IOTools:
