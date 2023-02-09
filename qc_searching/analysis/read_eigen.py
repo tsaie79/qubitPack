@@ -1071,8 +1071,8 @@ class DetermineDefectStateV4:
                 antisite_proj = sum(self.proj_eigenvals[spin][kpoint][band[0]][self.nn[-1]])
                 if band_ipr >= threshold:
                     promising_band[spin].append((band[0], band[1], total_proj,
-                                                 round(adj_proj/1*100,2),
-                                                 round(antisite_proj/1*100,2), band_ipr))
+                                                 round(adj_proj/total_proj*100,2),
+                                                 round(antisite_proj/total_proj*100,2), band_ipr))
 
                     sheet_procar = defaultdict(list)
                     for idx, o in enumerate(['s', 'py', 'pz', 'px', 'dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2']):
@@ -1350,8 +1350,8 @@ class DetermineDefectStateV5:
                     if condition:
                         promising_band[spin].append(
                             (band[0], band[1], total_proj,
-                             round(adj_proj / 1 * 100, 2),
-                             round(antisite_proj / 1 * 100, 2), band_ipr)
+                             round(adj_proj / total_proj * 100, 2),
+                             round(antisite_proj / total_proj * 100, 2), band_ipr)
                             )
 
                         sheet_procar = defaultdict(list)
@@ -1486,8 +1486,8 @@ class DetermineDefectStateV5:
         self.cbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.cbm].index.tolist()
         self.vbm = bulk_state_df.loc[bulk_state_df["n_occ_e"] == 1, "energy"].max()
         self.vbm_index = bulk_state_df.loc[bulk_state_df["energy"] == self.vbm].index.tolist()
-        print("perturbed band edges: (VBM, CBM): ({}/{}, {}/{})".format(self.vbm, self.vbm_index, self.cbm,
-                                                                        self.cbm_index))
+        print(f"perturbed band edges: (VBM, CBM): ({self.vbm}({self.vbm-self.vacuum_locpot:.3f})/{self.vbm_index}, "
+              f"{self.cbm}({self.cbm-self.vacuum_locpot:.3f})/{self.cbm_index})")
         print(f"perturbed bandgap: {self.cbm - self.vbm}")
 
         proj_state_df = pd.concat(band_proj.values(), ignore_index=False)

@@ -1,3 +1,4 @@
+import numpy as np
 from pymatgen.electronic_structure.plotter import DosPlotter
 from pymatgen.electronic_structure.core import Orbital, OrbitalType
 from pymatgen.electronic_structure.dos import CompleteDos
@@ -20,7 +21,7 @@ for db_config in glob(DB_CONFIG_PATH+"/*"):
 
 class DosPlotDB:
 
-    def __init__(self, db, db_filter, cbm, vbm, efermi, path_save_fig, sigma):
+    def __init__(self, db, db_filter, cbm, vbm, efermi, path_save_fig, sigma, vacuum_level, mark_vbm_cbm, mark_efermi):
         self.path_save_fig = path_save_fig
         self.e = db.collection.find_one(filter=db_filter)
         if self.path_save_fig:
@@ -38,6 +39,9 @@ class DosPlotDB:
         print("DOS="*20)
         print(f"\nDOS activated!:{self.e['task_id']}")
         self.complete_dos1 = db.get_dos(self.e["task_id"])
+        if vacuum_level:
+            self.complete_dos1 = self.__align_dos_with_vacuum(vacuum_level)
+
         self.cbm_primitive = cbm
         self.vbm_primitive = vbm
         self.efermi = efermi
@@ -45,7 +49,24 @@ class DosPlotDB:
         self.anion = self.complete_dos1.structure.types_of_specie[1]
         self.nn = self.e["NN"]
         self.sigma = sigma
+        self.mark_vbm_cbm = mark_vbm_cbm
+        self.mark_efermi = mark_efermi
 
+    def __align_dos_with_vacuum(self, vacuum_level):
+        """
+        Align the eigenvalues with vacuum level
+        :param vacuum_level: vacuum level
+        :return: aligned eigenvalues
+        """
+        dos = self.complete_dos1.as_dict()
+        efemri = dos["efermi"]
+        energies = dos["energies"]
+        aligned_efemri = efemri - vacuum_level
+        aligned_energies = np.array(energies) - vacuum_level
+        # create a new dos object
+        dos["efermi"] = aligned_efemri
+        dos["energies"] = aligned_energies
+        return CompleteDos.from_dict(dos)
 
     def band_gap(self):
         """
@@ -71,9 +92,11 @@ class DosPlotDB:
         # fig = plt.gcf()
         # fig.set_size_inches(18.5, 13.5, forward=True)
         tdos_plt.legend(loc=1)
-        tdos_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-        tdos_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-        tdos_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        if self.mark_vbm_cbm:
+            tdos_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+            tdos_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        if self.mark_efermi:
+            tdos_plt.axvline(x=self.efermi, color="k", linestyle="-.")
         tdos_plt.legend(loc=1)
         tdos_plt.title(self.e["formula_pretty"]+" total_dos")
 
@@ -100,9 +123,12 @@ class DosPlotDB:
                                            self.cbm_primitive+energy_upper_bound])
         fig = plt.gcf()
         fig.set_size_inches(18.5, 13.5, forward=True)
-        orbital_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-        orbital_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-        orbital_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        if self.mark_vbm_cbm:
+            orbital_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+            orbital_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        if self.mark_efermi:
+            orbital_plt.axvline(x=self.efermi, color="k", linestyle="-.")
+
         orbital_plt.legend(loc=1)
         orbital_plt.title(self.e["formula_pretty"] + " site%d %s" % (index, self.complete_dos1.structure.sites[index].specie))
 
@@ -130,9 +156,11 @@ class DosPlotDB:
                                        self.cbm_primitive+energy_upper_bound])
 
         site_dos_plt.legend(loc=1)
-        site_dos_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-        site_dos_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-        site_dos_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        if self.mark_vbm_cbm:
+            site_dos_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+            site_dos_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        if self.mark_efermi:
+            site_dos_plt.axvline(x=self.efermi, color="k", linestyle="-.")
 
         site_dos_plt.title(title+" site PDOS"+" Charge state:%d" % self.e["charge_state"])
         if self.path_save_fig:
@@ -162,9 +190,11 @@ class DosPlotDB:
         # fig = plt.gcf()
         # fig.set_size_inches(18.5, 13.5, forward=True)
         spd_plt.legend()
-        spd_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
-        spd_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
-        spd_plt.axvline(x=self.efermi+0.125, color="k", linestyle="-.")
+        if self.mark_vbm_cbm:
+            spd_plt.axvline(x=self.cbm_primitive, color="k", linestyle="--")
+            spd_plt.axvline(x=self.vbm_primitive, color="k", linestyle="--")
+        if self.mark_efermi:
+            spd_plt.axvline(x=self.efermi, color="k", linestyle="-.")
         
         return spd_plt
 # def main():
