@@ -1816,10 +1816,10 @@ def get_defect_state_v4(
 
 class RunDefectState:
     def __init__(self, calc_db_config, ir_db_config):
-        self.calc_db = get_db(db_name=calc_db.get("db_name"), collection_name=calc_db.get("collection_name"), 
-                              port=calc_db.get("port"), user=calc_db.get("user"))
-        self.ir_db = get_db(db_name=calc_db.get("db_name"), collection_name=calc_db.get("collection_name"), 
-                              port=calc_db.get("port"), user=calc_db.get("user"))
+        self.calc_db = get_db(db_name=calc_db_config.get("db_name"), collection_name=calc_db_config.get("collection_name"),
+                              port=calc_db_config.get("port"), user=calc_db_config.get("user"))
+        self.ir_db = get_db(db_name=ir_db_config.get("db_name"), collection_name=ir_db_config.get("collection_name"),
+                              port=ir_db_config.get("port"), user=ir_db_config.get("user"))
         
         
         
