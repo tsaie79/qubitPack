@@ -6,7 +6,9 @@ from qubitPack.qc_searching.analysis.dos_plot_from_db import DB_CONFIG_PATH
 
 from qubitPack.tool_box import get_db
 
-import matplotlib.pyplot as plt
+from pymatgen.io.vasp.inputs import Structure
+
+from matplotlib import pyplot as plt
 from glob import glob
 import os
 import pandas as pd
@@ -1823,12 +1825,6 @@ class RunDefectState:
         
     @classmethod
     def get_defect_state_with_ir(cls, taskid, localisation):
-        from qubitPack.tool_box import get_db
-
-        from pymatgen import Structure
-        import os
-        from matplotlib import pyplot as plt
-
         defect_taskid = taskid
         # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12347, user="Jeng_ro")
 
@@ -1878,12 +1874,6 @@ class RunDefectState:
 
     @classmethod
     def get_defect_state_without_ir(cls, defect_taskid):
-        from qubitPack.tool_box import get_db
-
-        from pymatgen import Structure
-        import os
-        from matplotlib import pyplot as plt
-
         # defect_db = get_db("defect_qubit_in_36_group", "charge_state", port=12347, user="Jeng_ro")
         # defect_db = get_db("HSE_triplets_from_Scan2dDefect", "calc_data-pbe_pc", port=12347, user="Jeng_ro")
         # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12349, user="Jeng_ro")
@@ -1917,12 +1907,6 @@ class RunDefectState:
     def get_defect_state_ipr_with_ir(self, taskid, threshold, plot="eigen", edge_tol=(0.25, 0.25),
                                      threshold_from="IPR", select_bands=None, dos_setting=None,
                                      eigen_plot_setting=None):
-        from qubitPack.tool_box import get_db
-
-        from pymatgen import Structure
-        import os
-        from matplotlib import pyplot as plt
-
         defect_taskid = taskid
         # defect_db = get_db("C2DB_IR_vacancy_HSE", "calc_data", port=12349, user="Jeng_ro")
         # defect_db = get_db("C2DB_IR_antisite_HSE", "calc_data", port=12347, user="Jeng_ro")
