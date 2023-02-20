@@ -1935,7 +1935,6 @@ class RunDefectState:
                     "pc_from_id": defect_entry["pc_from_id"], "defect_name": defect_entry["defect_name"],
                     "charge_state": defect_entry["charge_state"]
                 }
-
         level_info, levels, defect_levels = None, None, None
         state = get_defect_state_v4(
             db=defect_db,
@@ -1952,7 +1951,8 @@ class RunDefectState:
             edge_tol=edge_tol,
             # cbm by 0.025 eV
             ir_db=ir_db, #ir_col, #ir_col,
-            ir_entry_filter=find_ir_data(defect, hse=True),
+            ir_entry_filter=find_ir_data(defect, hse=True) if "HSE" in calc_db["db_name"] else find_ir_data(
+                defect, hse=False),
             threshold_from=threshold_from,
             selected_bands=select_bands,
             dos_setting=dos_setting,
@@ -2082,6 +2082,16 @@ if __name__ == '__main__':
         "db_name": "HSE_triplets_from_Scan2dDefect", "collection_name": "ir_data-pbe_pc", "port": 12349,
         "user": "Jeng_ro"
     }
+
+    calc_db = {
+        "db_name": "Scan2dDefect", "collection_name": "calc_data", "port": 12349,
+        "user": "Jeng_ro"
+    }
+    ir_db = {
+        "db_name": "Scan2dDefect", "collection_name": "ir_data", "port": 12349,
+        "user": "Jeng_ro"
+    }
+
     run_defect_state = RunDefectState(
         calc_db_config={
             "db_name": calc_db["db_name"],
@@ -2097,7 +2107,7 @@ if __name__ == '__main__':
         }
     )
 
-    for taskid in [1088]: #[43, 4, 12, 15, 19, 11, 14]:
+    for taskid in [4]: #[43, 4, 12, 15, 19, 11, 14]:
         eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info  = \
             run_defect_state.plot_ipr_vs_tot_proj(
             taskid=taskid,
