@@ -1581,7 +1581,7 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
                 ))
                 df.to_excel(path)
 
-    return tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
+    return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
 
 
 def get_defect_state_v4(
