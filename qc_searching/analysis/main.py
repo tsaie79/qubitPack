@@ -1812,7 +1812,7 @@ def get_defect_state_v4(
                 )
             df.to_excel(path)
 
-    return tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
+    return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
 
 class RunDefectState:
     def __init__(self, calc_db_config, ir_db_config):
