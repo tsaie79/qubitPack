@@ -1617,7 +1617,7 @@ def get_defect_state_v4(
         )
     perturbed_bandgap = can.cbm - can.vbm
     # define defect states and bulk states
-    tot, proj, bulk_tot, bulk_proj = can.get_candidates(
+    tot, proj, bulk_tot, bulk_proj, perturbed_bandedge_df = can.get_candidates(
         0,
         threshold=threshold,
         select_bands=selected_bands,
@@ -1812,7 +1812,7 @@ def get_defect_state_v4(
                 )
             df.to_excel(path)
 
-    return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
+    return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df
 
 class RunDefectState:
     def __init__(self, calc_db_config, ir_db_config):
@@ -1959,18 +1959,18 @@ class RunDefectState:
             eigen_plot_setting=eigen_plot_setting
         )
 
-        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
+        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df = state
         level_info = d_df.to_dict("records")[0]
         # print("=="*20, f"{defect['host_info']['c2db_info']['prototype']}/{defect['pc_from_id']}/{defect['chemsys']}"
         #                f"/{defect['defect_entry']['name']}/{defect['charge_state']}/{defect['task_id']}",
         #       "=="*20)
-        return eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
+        return eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df
 
 
     def plot_ipr_vs_tot_proj(self, taskid, threshold=3e-5, defect_plot=None, edge_tol=(.5, .5),
                              threshold_from="tot_proj", dos_setting=None, select_bands=None, eigen_plot_setting=None):
 
-        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
+        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df = \
             self.get_defect_state_ipr_with_ir(
             taskid, threshold,
             plot=defect_plot,
@@ -2060,13 +2060,15 @@ class RunDefectState:
                 # ax[i].scatter(cbm_row["energy"], cbm_row["tot_proj"], marker="x", color="black")
                 print("vbm_row", vbm_row.loc[:, ["energy", "IPR", "tot_proj", "spin"]])
                 print("cbm_row", cbm_row.loc[:, ["energy", "IPR", "tot_proj", "spin"]])
+
                 # plot a horizontal line that has the lowest value of tot_proj between vbm_row and cbm_row
                 # ax[i].axhline(y=max(vbm_row["tot_proj"].values[0], cbm_row["tot_proj"].values[0]), color="black",
                 #               linestyle="--")
 
         #set figure title
         fig.suptitle(f"taskid: {taskid}")
-        return eigen_plot, fig, levels['level_vbm'], levels['level_cbm'], bulk_df, d_df, defect_levels, tot
+        return eigen_plot, fig, levels['level_vbm'], levels['level_cbm'], bulk_df, d_df, defect_levels, tot, \
+               perturbed_bandedge_df
 
 if __name__ == '__main__':
     # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
@@ -2094,19 +2096,19 @@ if __name__ == '__main__':
             "user": ir_db["user"]
         }
     )
-    # eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot =\
-    #     run_defect_state.get_defect_state_ipr_with_ir(731, 0.02, edge_tol=(.5, .5), threshold_from="tot_proj")
 
     for taskid in [129]: #[43, 4, 12, 15, 19, 11, 14]:
-        eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot = run_defect_state.plot_ipr_vs_tot_proj(
+        eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, perturbed_bandedge_df  = \
+            run_defect_state.plot_ipr_vs_tot_proj(
             taskid=taskid,
             threshold=0.02,
             defect_plot=None,#"eigen",
             threshold_from="tot_proj",
-            edge_tol=(2, 1),
+            edge_tol=(.5, .5),
             # select_bands={"1": [455, 461, 465, 466], "-1": [455, 461, 465, 466]},
             # dos_setting={"sigma": 0.05, "mark_vbm_cbm": True, "mark_efermi": True, "vbm_for_plot": -6.099,
             #              "cbm_for_plot": -3.780, "lower_bound": 2},
             # eigen_plot_setting={"vbm_for_plot": -6.099, "cbm_for_plot": -3.780, "plot_transition":False}
         )
         plt.show()
+
