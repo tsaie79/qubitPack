@@ -1867,10 +1867,10 @@ class RunDefectState:
             ir_entry_filter=None, #find_ir_data(defect, hse=False),
         )
 
-        tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
+        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
         level_info = d_df.to_dict("records")[0]
         plt.show()
-        return tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
+        return eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
 
     @classmethod
     def get_defect_state_without_ir(cls, defect_taskid):
