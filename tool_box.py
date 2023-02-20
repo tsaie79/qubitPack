@@ -684,8 +684,17 @@ def get_band_edges_characters(bs, ir_data=None):
 
 def plot_locpot(db, task_id):
     from matplotlib import pyplot as plt
-    locpot = db.collection.find_one({"task_id":task_id})["calcs_reversed"][0]["output"]["locpot"]["2"]
-    plt.plot(locpot)
+    locpot = db.collection.find_one({"task_id":task_id})["calcs_reversed"][0]["output"]["locpot"]
+    locpot_a = locpot["0"]
+    locpot_b = locpot["1"]
+    locpot_c = locpot["2"]
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    ax[0].plot(locpot_a)
+    ax[1].plot(locpot_b)
+    ax[2].plot(locpot_c)
+    ax[0].set_title(f"ID:{task_id}-a")
+    ax[1].set_title(f"ID:{task_id}-b")
+    ax[2].set_title(f"ID:{task_id}-c")
     plt.show()
 
 def get_ir_info(band_info, ir_db, ir_entry_filter):
@@ -846,3 +855,5 @@ class Ipr:
                     print(f"spin:{spin}, band:{band}, energy:{round(ipr[1], 3)}, ipr:{round(ipr[-1], 8)}")
 
 
+if __name__ == '__main__':
+    pass

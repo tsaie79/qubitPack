@@ -147,12 +147,11 @@ class DosPlotDB:
 
     def sites_plots(self, energy_upper_bound, energy_lower_bound):
         title = self.e["formula_pretty"]
-        plotter = DosPlotter(zero_at_efermi=False, stack=True, sigma=self.sigma)
+        plotter = DosPlotter(zero_at_efermi=False, stack=False, sigma=self.sigma)
         for i in self.nn:
             plotter.add_dos(str(i), self.complete_dos1.get_site_dos(self.complete_dos1.structure[i]))
-        plotter.add_dos("total_dos", self.complete_dos1)
-        # plot = dosplot.get_plot(xlim=[-2.5, 2.5])
-        site_dos_plt = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound, 
+        # plotter.add_dos("total_dos", self.complete_dos1)
+        site_dos_plt = plotter.get_plot(xlim=[self.vbm_primitive-energy_lower_bound,
                                        self.cbm_primitive+energy_upper_bound])
 
         site_dos_plt.legend(loc=1)
