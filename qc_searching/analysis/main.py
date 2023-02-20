@@ -1959,12 +1959,12 @@ class RunDefectState:
             eigen_plot_setting=eigen_plot_setting
         )
 
-        tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
+        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = state
         level_info = d_df.to_dict("records")[0]
         # print("=="*20, f"{defect['host_info']['c2db_info']['prototype']}/{defect['pc_from_id']}/{defect['chemsys']}"
         #                f"/{defect['defect_entry']['name']}/{defect['charge_state']}/{defect['task_id']}",
         #       "=="*20)
-        return tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
+        return eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot
 
     @classmethod
     def plot_ipr_vs_tot_proj(cls, taskid, threshold=3e-5, defect_plot=None, edge_tol=(.5, .5),
