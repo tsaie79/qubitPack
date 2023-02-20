@@ -4,6 +4,8 @@ from qubitPack.qc_searching.analysis.read_eigen import DetermineDefectState, New
 from qubitPack.qc_searching.py_energy_diagram.application.defect_levels import EnergyLevel
 from qubitPack.qc_searching.analysis.dos_plot_from_db import DB_CONFIG_PATH
 
+from qubitPack.tool_box import get_db
+
 import matplotlib.pyplot as plt
 from glob import glob
 import os
