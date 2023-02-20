@@ -2068,7 +2068,7 @@ class RunDefectState:
         #set figure title
         fig.suptitle(f"taskid: {taskid}")
         return eigen_plot, fig, levels['level_vbm'], levels['level_cbm'], bulk_df, d_df, defect_levels, tot, \
-               perturbed_bandedge_df
+               bandgap_info
 
 if __name__ == '__main__':
     # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
