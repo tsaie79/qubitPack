@@ -1951,7 +1951,7 @@ class RunDefectState:
             edge_tol=edge_tol,
             # cbm by 0.025 eV
             ir_db=ir_db, #ir_col, #ir_col,
-            ir_entry_filter=find_ir_data(defect, hse=True) if "HSE" in calc_db["db_name"] else find_ir_data(
+            ir_entry_filter=find_ir_data(defect, hse=True) if "HSE" in defect_db.collection.name else find_ir_data(
                 defect, hse=False),
             threshold_from=threshold_from,
             selected_bands=select_bands,
