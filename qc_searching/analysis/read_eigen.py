@@ -1529,16 +1529,15 @@ class DetermineDefectStateV5:
         state_df["band_index"] = state_df.index
         bulk_state_df["band_index"] = bulk_state_df.index
 
-        bandedge_df = pd.DataFrame(
+        bandgap_df = pd.DataFrame(
             {
                 "band_name": ["VBM", "CBM"],
                 "band_index": [self.vbm_index[0], self.cbm_index[0]],
                 "energy": [self.vbm, self.cbm],
                 "energy_to_vacuum": [self.vbm-self.vacuum_locpot, self.cbm-self.vacuum_locpot],
                 "vacuum_level": [self.vacuum_locpot, self.vacuum_locpot],
-            }).round(3),
-
-        return state_df, proj_state_df, bulk_state_df, bulk_proj_state_df, bandedge_df
+            }).round(3)
+        return state_df, proj_state_df, bulk_state_df, bulk_proj_state_df, bandgap_df
 
 if __name__ == '__main__':
     pass

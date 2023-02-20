@@ -1617,7 +1617,7 @@ def get_defect_state_v4(
         )
     perturbed_bandgap = can.cbm - can.vbm
     # define defect states and bulk states
-    tot, proj, bulk_tot, bulk_proj, perturbed_bandedge_df = can.get_candidates(
+    tot, proj, bulk_tot, bulk_proj, bandgap_info = can.get_candidates(
         0,
         threshold=threshold,
         select_bands=selected_bands,
@@ -1812,7 +1812,7 @@ def get_defect_state_v4(
                 )
             df.to_excel(path)
 
-    return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df
+    return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot, bandgap_info
 
 class RunDefectState:
     def __init__(self, calc_db_config, ir_db_config):
@@ -1959,18 +1959,18 @@ class RunDefectState:
             eigen_plot_setting=eigen_plot_setting
         )
 
-        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df = state
+        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, bandgap_info = state
         level_info = d_df.to_dict("records")[0]
         # print("=="*20, f"{defect['host_info']['c2db_info']['prototype']}/{defect['pc_from_id']}/{defect['chemsys']}"
         #                f"/{defect['defect_entry']['name']}/{defect['charge_state']}/{defect['task_id']}",
         #       "=="*20)
-        return eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df
+        return eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, bandgap_info
 
 
     def plot_ipr_vs_tot_proj(self, taskid, threshold=3e-5, defect_plot=None, edge_tol=(.5, .5),
                              threshold_from="tot_proj", dos_setting=None, select_bands=None, eigen_plot_setting=None):
 
-        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, perturbed_bandedge_df = \
+        eigen_plot, tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot, bandgap_info = \
             self.get_defect_state_ipr_with_ir(
             taskid, threshold,
             plot=defect_plot,
@@ -2097,8 +2097,8 @@ if __name__ == '__main__':
         }
     )
 
-    for taskid in [129]: #[43, 4, 12, 15, 19, 11, 14]:
-        eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, perturbed_bandedge_df  = \
+    for taskid in [1088]: #[43, 4, 12, 15, 19, 11, 14]:
+        eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info  = \
             run_defect_state.plot_ipr_vs_tot_proj(
             taskid=taskid,
             threshold=0.02,
