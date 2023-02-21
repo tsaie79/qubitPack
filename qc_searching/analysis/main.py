@@ -847,7 +847,7 @@ def get_in_gap_levels(tot_df, edge_tol):
             "up_in_gap_occ": tuple(up_levels["n_occ_e"]),
             "up_in_gap_deg": tuple(up_levels["band_degeneracy"]) if "band_degeneracy" in up_levels.columns else (),
             "up_in_gap_band_id": tuple(up_levels["band_id"]) if "band_id" in up_levels.columns else (),
-            "up_in_gap_band_index": tuple(up_levels["band_index"]+1)
+            "up_in_gap_band_index": tuple(up_levels["band_index"])
         }
     )
 
@@ -858,7 +858,7 @@ def get_in_gap_levels(tot_df, edge_tol):
             "dn_in_gap_occ": tuple(dn_levels["n_occ_e"]),
             "dn_in_gap_deg": tuple(dn_levels["band_degeneracy"]) if "band_degeneracy" in dn_levels.columns else (),
             "dn_in_gap_band_id": tuple(dn_levels["band_id"]) if "band_id" in dn_levels.columns else (),
-            "dn_in_gap_band_index": tuple(dn_levels["band_index"]+1)
+            "dn_in_gap_band_index": tuple(dn_levels["band_index"])
         }
     )
     max_len = max([len(v) for v in in_gap_levels.values()])
