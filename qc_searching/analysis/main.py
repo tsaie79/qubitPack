@@ -869,6 +869,39 @@ def get_in_gap_levels(tot_df, edge_tol):
 
 
 def get_in_gap_transition(tot_df, edge_tol):
+    transition_dict ={
+            "up_tran_from_vbm": (),
+            "up_tran_en": None,  # was 0,
+            "up_tran_bottom": None,  # was 0
+            "up_tran_top": None,  # was 0
+            "up_tran_ir": (),
+            "up_tran_occ": (),
+            "up_tran_deg": (),
+            "up_tran_band_id": (),
+            "up_tran_level": (),
+            "up_tran_band_index": (),
+            "up_tran_lumo_homo_energy": (),
+            "up_tran_lumo_homo_band_id": (),
+            "up_tran_lumo_homo_band_index": (),
+            "up_tran_lumo_homo_deg": (),
+            "up_tran_lumo_homo_ir": (),
+
+            "dn_tran_from_vbm": (),
+            "dn_tran_en": None,  # was 0,
+            "dn_tran_bottom": None,  # was 0
+            "dn_tran_top": None,  # was 0
+            "dn_tran_ir": (),
+            "dn_tran_occ": (),
+            "dn_tran_deg": (),
+            "dn_tran_band_id": (),
+            "dn_tran_level": (),
+            "dn_tran_band_index": (),
+            "dn_tran_lumo_homo_energy": (),
+            "dn_tran_lumo_homo_band_id": (),
+            "dn_tran_lumo_homo_band_index": (),
+            "dn_tran_lumo_homo_deg": (),
+            "dn_tran_lumo_homo_ir": (),
+    }
     # well-defined in-gap state: energetic difference of occupied states and vbm > 0.1   
     up_condition = (tot_df["spin"] == "1") & (tot_df["dist_from_vbm"] >= -1*edge_tol[0]) & (tot_df["dist_from_cbm"] <=
                                                                                            edge_tol[1])
@@ -885,8 +918,6 @@ def get_in_gap_transition(tot_df, edge_tol):
     else:
         up_tran_df = tot_df.loc[up_condition, ["energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_index"]]
         dn_tran_df = tot_df.loc[dn_condition, ["energy", "dist_from_vbm", "dist_from_cbm", "n_occ_e", "band_index"]]
-
-    transition_dict = {}
 
     sum_occ_up = 0
     for en_up, occ_up in zip(up_tran_df["dist_from_vbm"], up_tran_df["n_occ_e"]):
@@ -938,46 +969,7 @@ def get_in_gap_transition(tot_df, edge_tol):
                     }
                 )
                 break
-            else:
-                transition_dict.update({"up_tran_from_vbm": (), 
-                                        "up_tran_en": None, # was 0,
-                                        
-                                        "up_tran_bottom": None, # was 0 
-                                        "up_tran_top": None,  # was 0 
-                                        
-                                        "up_tran_ir": (),
-                                        "up_tran_occ": (),
-                                        "up_tran_deg": (),
-                                        "up_tran_band_id": (),
-                                        "up_tran_level": (),
-                                        "up_tran_band_index": (),
 
-                                        "up_tran_lumo_homo_energy": (),
-                                        "up_tran_lumo_homo_band_id": (),
-                                        "up_tran_lumo_homo_band_index": (),
-                                        "up_tran_lumo_homo_deg": (),
-                                        "up_tran_lumo_homo_ir": (),
-                                       })
-    else:
-        transition_dict.update({"up_tran_from_vbm": (),
-                                "up_tran_en": None, #was 0,
-                                
-                                "up_tran_bottom": None,# was 0 
-                                "up_tran_top": None, # was 0
-                                
-                                "up_tran_occ": (),
-                                "up_tran_deg": (),
-                                "up_tran_band_id": (),
-                                "up_tran_level": (),
-                                "up_tran_band_index": (),
-
-                                "up_tran_lumo_homo_energy": (),
-                                "up_tran_lumo_homo_band_id": (),
-                                "up_tran_lumo_homo_band_index": (),
-                                "up_tran_lumo_homo_deg": (),
-                                "up_tran_lumo_homo_ir": (),
-                                })
-    # print(dn_tran_df)
     if not dn_tran_df["n_occ_e"].empty and len(dn_tran_df) > 1:
         dE_dns = -1*np.diff(dn_tran_df["dist_from_vbm"])            
         for idx, dE_dn in enumerate(dE_dns):
@@ -1011,46 +1003,6 @@ def get_in_gap_transition(tot_df, edge_tol):
                     }
                 )
                 break
-            else:
-                transition_dict.update({"dn_tran_from_vbm": (),
-                                        "dn_tran_en": None, #was 0,
-                                        
-                                        "dn_tran_bottom": None, # was 0 
-                                        "dn_tran_top": None, # was 0 
-                                        
-                                        "dn_tran_ir": (),
-                                        "dn_tran_occ": (),
-                                        "dn_tran_deg": (),
-                                        "dn_tran_band_id": (),
-                                        "dn_tran_level": (),
-                                        "dn_tran_band_index": (),
-                                        
-                                        "dn_tran_lumo_homo_energy": (),
-                                        "dn_tran_lumo_homo_band_id": (),
-                                        "dn_tran_lumo_homo_band_index": (),
-                                        "dn_tran_lumo_homo_deg": (),
-                                        "dn_tran_lumo_homo_ir": (),
-                                       })
-    else:
-        transition_dict.update({"dn_tran_from_vbm": (),
-                                "dn_tran_en": None, #was 0
-                                
-                                "dn_tran_bottom": None, # was 0 
-                                "dn_tran_top": None,  # was 0 
-                                
-                                "dn_tran_ir": (),
-                                "dn_tran_occ": (),
-                                "dn_tran_deg": (),
-                                "dn_tran_band_id": (),
-                                "dn_tran_level": (),
-                                "dn_tran_band_index": (),
-
-                                "dn_tran_lumo_homo_energy": (),
-                                "dn_tran_lumo_homo_band_id": (),
-                                "dn_tran_lumo_homo_band_index": (),
-                                "dn_tran_lumo_homo_deg": (),
-                                "dn_tran_lumo_homo_ir": (),
-                               })        
     # print(transition_dict)
     transition_df = pd.DataFrame([transition_dict])
     return transition_df
@@ -2107,14 +2059,14 @@ if __name__ == '__main__':
         }
     )
 
-    for taskid in [4]: #[43, 4, 12, 15, 19, 11, 14]:
+    for taskid in [3510]: #[43, 4, 12, 15, 19, 11, 14]:
         eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info  = \
             run_defect_state.plot_ipr_vs_tot_proj(
             taskid=taskid,
-            threshold=0.02,
-            defect_plot=None,#"eigen",
+            threshold=0.1,
+            defect_plot="eigen",
             threshold_from="tot_proj",
-            edge_tol=(.5, .5),
+            edge_tol=(0.25, 0.25),
             # select_bands={"1": [455, 461, 465, 466], "-1": [455, 461, 465, 466]},
             # dos_setting={"sigma": 0.05, "mark_vbm_cbm": True, "mark_efermi": True, "vbm_for_plot": -6.099,
             #              "cbm_for_plot": -3.780, "lower_bound": 2},
