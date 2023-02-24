@@ -444,7 +444,7 @@ def get_eigen_plot_v3(tot, determine_defect_state_obj, is_vacuum_aligment=False,
 
     vbm_for_plot = eigen_plot_setting.get("vbm_for_plot", vbm)
     cbm_for_plot = eigen_plot_setting.get("cbm_for_plot", cbm)
-    print("CBM,VBM FOR PLOTS"*20, vbm_for_plot, cbm_for_plot)
+    print("==CBM,VBM FOR PLOTS==", vbm_for_plot, cbm_for_plot)
 
     def plotting(set_vbm, set_cbm, tot_df):
         from matplotlib.ticker import AutoMinorLocator
@@ -1768,13 +1768,9 @@ def get_defect_state_v4(
 
 class RunDefectState:
     def __init__(self, calc_db_config, ir_db_config):
-        self.calc_db = get_db(db_name=calc_db_config.get("db_name"), collection_name=calc_db_config.get("collection_name"),
-                              port=calc_db_config.get("port"), user=calc_db_config.get("user"))
-        self.ir_db = get_db(db_name=ir_db_config.get("db_name"), collection_name=ir_db_config.get("collection_name"),
-                              port=ir_db_config.get("port"), user=ir_db_config.get("user"))
-        
-        
-        
+        self.calc_db = get_db(**calc_db_config)
+        self.ir_db = get_db(**ir_db_config)
+
     @classmethod
     def get_defect_state_with_ir(cls, taskid, localisation):
         defect_taskid = taskid
@@ -1871,6 +1867,7 @@ class RunDefectState:
 
         # ir_col = get_db("HSE_triplets_from_Scan2dDefect", "ir_data-pbe_pc", port=12349)
         ir_db = self.ir_db
+        print(f"ir_db: {self.ir_db.db_name}")
         # ir_col = get_db("Scan2dDefect", "ir_data", port=12349)
         # ir_col = get_db("C2DB_IR_antisite_HSE", "ir_data", port=12347)
         # ir_col = get_db("C2DB_IR_vacancy_HSE", "ir_data", port=12349)
@@ -1879,7 +1876,6 @@ class RunDefectState:
 
         defect = defect_db.collection.find_one({"task_id": defect_taskid})
         def find_ir_data(defect_entry, hse=False):
-            defect_taskid = defect_entry["task_id"]
             if hse:
                 return {"prev_fw_taskid": defect_taskid}
             else:
@@ -1903,8 +1899,10 @@ class RunDefectState:
             edge_tol=edge_tol,
             # cbm by 0.025 eV
             ir_db=ir_db, #ir_col, #ir_col,
-            ir_entry_filter=find_ir_data(defect, hse=True) if "HSE" in defect_db.db_name else find_ir_data(
-                defect, hse=False),
+            ir_entry_filter={"prev_fw_taskid": defect_taskid},#find_ir_data(defect, hse=True) if "HSE" in
+        # defect_db.db_name else " \
+        #                                                                         "find_ir_data(
+                #defect, hse=False),
             threshold_from=threshold_from,
             selected_bands=select_bands,
             dos_setting=dos_setting,
@@ -2022,56 +2020,46 @@ class RunDefectState:
         return eigen_plot, fig, levels['level_vbm'], levels['level_cbm'], bulk_df, d_df, defect_levels, tot, \
                bandgap_info
 
-if __name__ == '__main__':
-    # tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
-    #     RunDefectState.get_defect_state_without_ir(1)
+class Main:
+    @classmethod
+    def no_ir(cls):
+        tot, proj, d_df, levels, defect_levels, bulk_tot, bandedge_bulk_tot = \
+            RunDefectState.get_defect_state_without_ir(1)
 
-    calc_db = {
-        "db_name": "HSE_triplets_from_Scan2dDefect", "collection_name": "calc_data-pbe_pc", "port": 12349,
-        "user": "Jeng_ro"
-    }
-    ir_db = {
-        "db_name": "HSE_triplets_from_Scan2dDefect", "collection_name": "ir_data-pbe_pc", "port": 12349,
-        "user": "Jeng_ro"
-    }
-
-    calc_db = {
-        "db_name": "Scan2dDefect", "collection_name": "calc_data", "port": 12349,
-        "user": "Jeng_ro"
-    }
-    ir_db = {
-        "db_name": "Scan2dDefect", "collection_name": "ir_data", "port": 12349,
-        "user": "Jeng_ro"
-    }
-
-    run_defect_state = RunDefectState(
-        calc_db_config={
-            "db_name": calc_db["db_name"],
-            "collection_name": calc_db["collection_name"],
-            "port": calc_db["port"],
-            "user": calc_db["user"]
-        },
-        ir_db_config={
-            "db_name": ir_db["db_name"],
-            "collection_name": ir_db["collection_name"],
-            "port": ir_db["port"],
-            "user": ir_db["user"]
+    @classmethod
+    def from_ipr(cls):
+        calc_db = {
+            "db_name": "HSE_triplets_from_Scan2dDefect", "collection_name": "calc_data-pbe_pc", "port": 12349,
+            "user": "Jeng_ro"
         }
-    )
+        ir_db = {
+            "db_name": "HSE_triplets_from_Scan2dDefect", "collection_name": "ir_data-pbe_pc", "port": 12349,
+            "user": "Jeng_ro"
+        }
+        # calc_db = {
+        #     "db_name": "Scan2dDefect", "collection_name": "calc_data", "port": 12349,
+        #     "user": "Jeng_ro"
+        # }
+        # ir_db = {
+        #     "db_name": "Scan2dDefect", "collection_name": "ir_data", "port": 12349,
+        #     "user": "Jeng_ro"
+        # }
 
-    for taskid in [3892]: #[43, 4, 12, 15, 19, 11, 14]:
-        run_defect_state.ir_db = None
-        eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info  = \
-            run_defect_state.plot_ipr_vs_tot_proj(
-            taskid=taskid,
-            threshold=0.02,
-            defect_plot="eigen",
-            threshold_from="tot_proj",
-            edge_tol=(0.25, 0.25),
-            # select_bands={"1": [455, 461, 465, 466], "-1": [455, 461, 465, 466]},
-            # dos_setting={"sigma": 0.05, "mark_vbm_cbm": True, "mark_efermi": True, "vbm_for_plot": -6.099,
-            #              "cbm_for_plot": -3.780, "lower_bound": 2},
-            # eigen_plot_setting={"vbm_for_plot": -6.099, "cbm_for_plot": -3.780, "plot_transition":False}
-        )
-        plt.show()
+        run_defect_state = RunDefectState(calc_db_config=calc_db, ir_db_config=ir_db)
+        for taskid in [877]:  # [43, 4, 12, 15, 19, 11, 14]:
+            eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info = \
+                run_defect_state.plot_ipr_vs_tot_proj(
+                    taskid=taskid,
+                    threshold=0.1,
+                    defect_plot="eigen",
+                    threshold_from="tot_proj",
+                    edge_tol=(0.5, 0.5),
+                    # select_bands={"1": [455, 461, 465, 466], "-1": [455, 461, 465, 466]},
+                    # dos_setting={"sigma": 0.05, "mark_vbm_cbm": True, "mark_efermi": True, "vbm_for_plot": -6.099,
+                    #              "cbm_for_plot": -3.780, "lower_bound": 2},
+                    # eigen_plot_setting={"vbm_for_plot": -6.099, "cbm_for_plot": -3.780, "plot_transition":False}
+                )
+            plt.show()
+if __name__ == '__main__':
 
+    Main.from_ipr()
