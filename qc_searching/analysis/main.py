@@ -1903,7 +1903,7 @@ class RunDefectState:
             edge_tol=edge_tol,
             # cbm by 0.025 eV
             ir_db=ir_db, #ir_col, #ir_col,
-            ir_entry_filter=find_ir_data(defect, hse=True) if "HSE" in defect_db.collection.name else find_ir_data(
+            ir_entry_filter=find_ir_data(defect, hse=True) if "HSE" in defect_db.db_name else find_ir_data(
                 defect, hse=False),
             threshold_from=threshold_from,
             selected_bands=select_bands,
@@ -2059,11 +2059,12 @@ if __name__ == '__main__':
         }
     )
 
-    for taskid in [3510]: #[43, 4, 12, 15, 19, 11, 14]:
+    for taskid in [3892]: #[43, 4, 12, 15, 19, 11, 14]:
+        run_defect_state.ir_db = None
         eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info  = \
             run_defect_state.plot_ipr_vs_tot_proj(
             taskid=taskid,
-            threshold=0.1,
+            threshold=0.02,
             defect_plot="eigen",
             threshold_from="tot_proj",
             edge_tol=(0.25, 0.25),
