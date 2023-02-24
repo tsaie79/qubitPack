@@ -444,7 +444,7 @@ def get_eigen_plot_v3(tot, determine_defect_state_obj, is_vacuum_aligment=False,
 
     vbm_for_plot = eigen_plot_setting.get("vbm_for_plot", vbm)
     cbm_for_plot = eigen_plot_setting.get("cbm_for_plot", cbm)
-    print("=55"*20, vbm_for_plot, cbm_for_plot)
+    print("CBM,VBM FOR PLOTS"*20, vbm_for_plot, cbm_for_plot)
 
     def plotting(set_vbm, set_cbm, tot_df):
         from matplotlib.ticker import AutoMinorLocator
