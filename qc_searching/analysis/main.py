@@ -778,7 +778,7 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
     band_idxs = input_sheet.index
     for band_idx, spin in zip(tot.index+1, tot["spin"]):
         spin = "up" if spin == "1" else "down"
-        bd_idx_sheet = bd_idx_dict[spin]["band_index"]
+        bd_idx_sheet = bd_idx_dict[spin].get("band_index", None)
         if band_idx in bd_idx_sheet:
             band_id = bd_idx_sheet.index(band_idx)
             band_id_list.append(band_id)
@@ -786,6 +786,8 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
             degeneracy = 1
             while band_idx-degeneracy not in bd_idx_sheet:
                 degeneracy += 1
+                if degeneracy > 5:
+                    raise ValueError(f"degeneracy:{degeneracy} is too large")
             if degeneracy <= 10:
                 band_id = bd_idx_sheet.index(band_idx-degeneracy)
                 band_id_list.append(band_id)
@@ -802,7 +804,6 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
             band_degen_list.append(0)
         else:
             band_degen_list.append(bd_degen_dict[spin]["band_degeneracy"][band_id])
-
     # Locate IR from irreducible_reps
     bd_ir_dict = ir_entry["irvsp"]["parity_eigenvals"]["single_kpt"]["(0.0, 0.0, 0.0)"]
     band_ir_list = []
@@ -818,6 +819,7 @@ def get_ir_info(tot, ir_db, ir_entry_filter):
                                   "band_degeneracy": band_degen_list,
                                   "band_ir": band_ir_list},
                                  index=tot.index)
+    print(f"\nIR info:\n{ir_info_sheet}")
     tot = pd.concat([tot, ir_info_sheet], axis=1)
     return tot, ir_entry
 
@@ -1585,47 +1587,54 @@ def get_defect_state_v4(
     bandedge_bulk_tot = None
     if ir_db and ir_entry_filter:
         print("IR information activated!")
-        tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
-        bulk_tot, _ = get_ir_info(bulk_tot, ir_db, ir_entry_filter)
-        bulk_tot["energy"] -= can.vacuum_locpot
-        bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
-        print("B==" * 20)
-        print(f"\nBand edges with IRs:\n{bandedge_bulk_tot}")
+        try:
+            tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+            bulk_tot, _ = get_ir_info(bulk_tot, ir_db, ir_entry_filter)
+        except ValueError:
+            print(f"IR information not found for {ir_entry_filter}")
+            bulk_tot["energy"] -= can.vacuum_locpot
+            bandedge_bulk_tot = bulk_tot.loc[
+                (bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
+            print("B==" * 20)
+            print(f"\nBand edges:\n{bandedge_bulk_tot}")
 
-        perturbed_bandedge_ir.append(
-            bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.vbm_index[0],
-                                  "band_ir"].iloc[0].split(" ")[0]
-            )
-        perturbed_bandedge_ir.append(
-            bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.cbm_index[0],
-                                  "band_ir"].iloc[0].split(" ")[0]
-            )
+        else:
+            bulk_tot["energy"] -= can.vacuum_locpot
+            bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
+            print("B==" * 20)
+            print(f"\nBand edges with IRs:\n{bandedge_bulk_tot}")
 
+            perturbed_bandedge_ir.append(
+                bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.vbm_index[0],
+                                      "band_ir"].iloc[0].split(" ")[0]
+                )
+            perturbed_bandedge_ir.append(
+                bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.cbm_index[0],
+                                      "band_ir"].iloc[0].split(" ")[0]
+                )
 
-        # print("%%"* 20)
-        # print(tot.columns)
-        if ir_entry:
-            top_texts = {"1": [], "-1": []}
-            top_texts_for_d_df = {"1": [], "-1": []}
-            for spin in ["1", "-1"]:
-                ir_info = tot.loc[tot["spin"] == spin]
-                for band_id, band_degeneracy, band_ir in zip(
-                        ir_info["band_id"], ir_info["band_degeneracy"],
-                        ir_info["band_ir"]
-                        ):
-                    info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
-                    top_texts[spin].append(info)
-                top_texts[spin] = top_texts[spin]
+            if ir_entry:
+                top_texts = {"1": [], "-1": []}
+                top_texts_for_d_df = {"1": [], "-1": []}
+                for spin in ["1", "-1"]:
+                    ir_info = tot.loc[tot["spin"] == spin]
+                    for band_id, band_degeneracy, band_ir in zip(
+                            ir_info["band_id"], ir_info["band_degeneracy"],
+                            ir_info["band_ir"]
+                            ):
+                        info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+                        top_texts[spin].append(info)
+                    top_texts[spin] = top_texts[spin]
 
-                ir_info_for_d_df = tot.loc[(tot["spin"] == spin) & (tot["energy"] > can.vbm) & (tot["energy"] <
-                                                                                                can.cbm)]
-                for band_id, band_degeneracy, band_ir in zip(
-                        ir_info_for_d_df["band_id"], ir_info_for_d_df[
-                            "band_degeneracy"], ir_info_for_d_df["band_ir"]
-                        ):
-                    info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
-                    top_texts_for_d_df[spin].append(info)
-                top_texts_for_d_df[spin] = top_texts_for_d_df[spin]
+                    ir_info_for_d_df = tot.loc[(tot["spin"] == spin) & (tot["energy"] > can.vbm) & (tot["energy"] <
+                                                                                                    can.cbm)]
+                    for band_id, band_degeneracy, band_ir in zip(
+                            ir_info_for_d_df["band_id"], ir_info_for_d_df[
+                                "band_degeneracy"], ir_info_for_d_df["band_ir"]
+                            ):
+                        info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+                        top_texts_for_d_df[spin].append(info)
+                    top_texts_for_d_df[spin] = top_texts_for_d_df[spin]
 
     else:
         print("No IRs!")
@@ -2046,11 +2055,11 @@ class Main:
         # }
 
         run_defect_state = RunDefectState(calc_db_config=calc_db, ir_db_config=ir_db)
-        for taskid in [877]:  # [43, 4, 12, 15, 19, 11, 14]:
+        for taskid in [63]:  # [43, 4, 12, 15, 19, 11, 14]:
             eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info = \
                 run_defect_state.plot_ipr_vs_tot_proj(
                     taskid=taskid,
-                    threshold=0.1,
+                    threshold=0.2,
                     defect_plot="eigen",
                     threshold_from="tot_proj",
                     edge_tol=(0.5, 0.5),
