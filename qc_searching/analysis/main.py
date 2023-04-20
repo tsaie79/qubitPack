@@ -1591,7 +1591,7 @@ def get_defect_state_v4(
             tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
             bulk_tot, _ = get_ir_info(bulk_tot, ir_db, ir_entry_filter)
         except ValueError:
-            print(f"IR information not found for {ir_entry_filter}")
+            print(f"IR information not correctly retrieved for {ir_entry_filter}")
             bulk_tot["energy"] -= can.vacuum_locpot
             bandedge_bulk_tot = bulk_tot.loc[
                 (bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
@@ -2055,11 +2055,11 @@ class Main:
         # }
 
         run_defect_state = RunDefectState(calc_db_config=calc_db, ir_db_config=ir_db)
-        for taskid in [63]:  # [43, 4, 12, 15, 19, 11, 14]:
+        for taskid in [238]:  # [43, 4, 12, 15, 19, 11, 14]:
             eigen_plot, fig, _, _, bulk_df, d_df, defect_levels, tot, bandgap_info = \
                 run_defect_state.plot_ipr_vs_tot_proj(
                     taskid=taskid,
-                    threshold=0.2,
+                    threshold=0.25,
                     defect_plot="eigen",
                     threshold_from="tot_proj",
                     edge_tol=(0.5, 0.5),
