@@ -7,7 +7,6 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "pymatgen-db==2019.3.28",
         "pymatgen-diffusion==2019.8.18",
         "jinja2@git+ssh://git@github.com/pallets/jinja.git@737a4cd41d09878e7e6c584a2062f5853dc30150#egg=Jinja2",
         "pyxtal@git+https://github.com/qzhu2017/pyxtal@6026219b73ffb40cd14eda9f70bd9007a3bffbab#egg=pyxtal",
