@@ -7,7 +7,8 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "pymatgen-db==2019.3.28",
+        "pymatgen_db@git+https://github.com/materialsproject/pymatgen-db.git@c3271276c2ef26dc98ccc86634405a04cd677395"
+        "#egg=pymatgen_db",
         "pymatgen_diffusion@git+https://github.com/materialsvirtuallab/pymatgen-analysis-diffusion.git"
         "@51d84ea1fd034941baa22d4b1b8610a4cc6fb801#egg=pymatgen_diffusion",
         "ase@git+ssh://git@github.com/rosswhitfield/ase.git@07de35654601ddbb2b23a4e7df7091696b0af108#egg=ase",
