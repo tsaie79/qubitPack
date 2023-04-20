@@ -7,10 +7,7 @@ setup(
     version="0.1",
     packages=find_packages(),
     install_requires=[
-        "atomate"
-    ],
-    dependency_links=[
-        "-e git+https://github.com/tsaie79/atomate.git@c2b16d05a68999b4adc88afa2802804132c691b3#egg=atomate"
+        "atomate@git+https://github.com/tsaie79/atomate.git@c2b16d05a68999b4adc88afa2802804132c691b3#egg=atomate"
     ],
 )
 
