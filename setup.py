@@ -7,6 +7,7 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
+        "smoqe@git+https://github.com/dangunter/smoqe.git@master#egg=smoqe"
         "pymatgen_db@git+https://github.com/materialsproject/pymatgen-db.git@c3271276c2ef26dc98ccc86634405a04cd677395"
         "#egg=pymatgen_db",
         "pymatgen_diffusion@git+https://github.com/materialsvirtuallab/pymatgen-analysis-diffusion.git"
