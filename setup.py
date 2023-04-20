@@ -7,8 +7,8 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "pymatgen-analysis-diffusion@git+ssh:https://github.com/materialsvirtuallab/pymatgen-analysis-diffusion.git@master#egg=pymatgen-analysis-diffusion",
-        # "jinja2@git+ssh://git@github.com/pallets/jinja.git@737a4cd41d09878e7e6c584a2062f5853dc30150#egg=Jinja2",
+        "pymatgen_diffusion@git+https://github.com/materialsvirtuallab/pymatgen-analysis-diffusion.git"
+        "@51d84ea1fd034941baa22d4b1b8610a4cc6fb801#egg=pymatgen_diffusion"
         # "pyxtal@git+https://github.com/qzhu2017/pyxtal@6026219b73ffb40cd14eda9f70bd9007a3bffbab#egg=pyxtal",
         # "SciencePlots@git+https://github.com/garrettj403/SciencePlots.git@a55135ac96d065c1ca3e22ce86aaf7c66d7db27d#egg=SciencePlots",
         # "MarkupSafe@git+ssh://git@github.com/pallets/markupsafe.git@22c946de28c2f5916f8c88a983a3e48e1cdbd2fd#egg=MarkupSafe",
