@@ -18,7 +18,7 @@ setup(
         "atomate@git+https://github.com/tsaie79/atomate.git@c2b16d05a68999b4adc88afa2802804132c691b3#egg=atomate",
         "FireWorks==1.9.6",
         "custodian==2020.4.27",
-
+        "phonopy==2.12.0"
     ],
 )
 
