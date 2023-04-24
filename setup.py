@@ -6,6 +6,7 @@ setup(
     name="qubitPack",
     author="Jeng-Yuan Tsai",
     version="0.1.0",
+    email="tsaie79@gmail.com",
     packages=find_packages(),
     install_requires=[
         "smoqe@git+https://github.com/dangunter/smoqe.git@master#egg=smoqe"
