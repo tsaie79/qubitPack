@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="qubitPack",
-    author="Jeng-Yuan Tsai",
+    author="Jeng-Yuan Tsai"
     version="0.1.0",
     email="tsaie79@gmail.com",
     packages=find_packages(),
