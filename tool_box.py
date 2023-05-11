@@ -548,11 +548,11 @@ def phonopy_structure(orig_st, return_pos2aBR=True):
     os.makedirs(path, exist_ok=True)
     with monty.os.cd(path):
         orig_st.to("poscar", "POSCAR")
-        call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "), shell=True)
+        call("phonopy --symmetry --tolerance 0.01 -c POSCAR".split(" "))
         std_st = Structure.from_file("PPOSCAR")
         std_st.to("poscar", "POSCAR")
         if return_pos2aBR:
-            pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True, shell=True).split("\n")
+            pos2aBR_out = check_output(["pos2aBR"], universal_newlines=True).split("\n")
             std_st = Structure.from_file("POSCAR_std")
         else:
             pos2aBR_out = None
