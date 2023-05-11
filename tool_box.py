@@ -539,7 +539,7 @@ def get_lowest_unocc_band_idx_v2(task_id, db_obj, nbands):
     print("up_no_excite_occ: {}, dn_no_excite_occ:{}".format(occu_configs["1"], occu_configs["-1"]))
     return occu_configs["1"], occu_configs["-1"]
 
-def phonopy_structure(orig_st, return_pos2aBR=True):
+def phonopy_structure(orig_st, return_pos2aBR=True, sym_data_path=None):
     from subprocess import call, check_output, Popen
     import shutil
     import monty
@@ -552,6 +552,8 @@ def phonopy_structure(orig_st, return_pos2aBR=True):
         std_st = Structure.from_file("PPOSCAR")
         std_st.to("poscar", "POSCAR")
         if return_pos2aBR:
+            if sym_data:
+                os.environ["POS2ABRDATA"] = sym_data_path
             pos2aBR_out = check_output("pos2aBR".split(" "), universal_newlines=True).split("\n")
             std_st = Structure.from_file("POSCAR_std")
         else:
