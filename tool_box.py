@@ -552,8 +552,7 @@ def phonopy_structure(orig_st, return_pos2aBR=True):
         std_st = Structure.from_file("PPOSCAR")
         std_st.to("poscar", "POSCAR")
         if return_pos2aBR:
-            pos2aBR_out = check_output("/home/tsai/.conda/envs/workflow/bin/pos2aBR".split(" "),
-                                       universal_newlines=True).split("\n")
+            pos2aBR_out = check_output("pos2aBR".split(" "), universal_newlines=True).split("\n")
             std_st = Structure.from_file("POSCAR_std")
         else:
             pos2aBR_out = None
