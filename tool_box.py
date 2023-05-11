@@ -554,7 +554,7 @@ def phonopy_structure(orig_st, return_pos2aBR=True, sym_data_path=None):
         if return_pos2aBR:
             if sym_data_path:
                 os.environ["POS2ABRDATA"] = sym_data_path
-            pos2aBR_out = check_output("pos2aBR".split(" "), universal_newlines=True)#.split("\n")
+            pos2aBR_out = check_output("pos2aBR".split(" "), universal_newlines=True).split("\n")
             std_st = Structure.from_file("POSCAR_std")
         else:
             pos2aBR_out = None
