@@ -1388,9 +1388,158 @@ def get_defect_state_v2(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
     return tot, proj, d_df, levels
 
 
+# def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
+#                         threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None,
+#                         is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None) -> object:
+#     """
+#     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
+#     "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
+#     tsaie79 localhost:2222/2DmaterialQuantumComputing"
+#     """
+#
+#     can = DetermineDefectStateV3(db=db, db_filter=db_filter, cbm=cbm, vbm=vbm, save_fig_path=path_save_fig,
+#                                   locpot=locpot,
+#                                   locpot_c2db=locpot_c2db)
+#     perturbed_bandgap = can.cbm - can.vbm
+#     # define defect states and bulk states
+#     tot, proj, bulk_tot, bulk_proj = can.get_candidates(
+#         0,
+#         threshold=threshold,
+#         select_bands=selected_bands
+#     )
+#     # print("checking!"*20, bulk_tot.loc[(bulk_tot["spin"] == "-1") & (bulk_tot.index>=209) & (bulk_tot.index<=216)])
+#     # print("checking!"*20, tot.loc[(tot["spin"] == "-1") & (tot.index>=209) & (tot.index<=216)])
+#
+#     top_texts = None
+#     top_texts_for_d_df = None
+#     perturbed_bandedge_ir = []
+#
+#     bandedge_bulk_tot = None
+#     if ir_db and ir_entry_filter:
+#         print("IR information activated!")
+#         tot, ir_entry = get_ir_info(tot, ir_db, ir_entry_filter)
+#         bulk_tot, _ = get_ir_info(bulk_tot, ir_db, ir_entry_filter)
+#         bulk_tot['energy'] -= can.vacuum_locpot
+#         bandedge_bulk_tot = bulk_tot.loc[(bulk_tot.index == can.vbm_index[0]) | (bulk_tot.index == can.cbm_index[0])]
+#         print("B=="*20)
+#         print(f"\nBand edges with IRs:\n{bandedge_bulk_tot}")
+#
+#         perturbed_bandedge_ir.append(bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.vbm_index[0],
+#                                                            "band_ir"].iloc[0].split(" ")[0])
+#         perturbed_bandedge_ir.append(bandedge_bulk_tot.loc[bandedge_bulk_tot.index == can.cbm_index[0],
+#                                                            "band_ir"].iloc[0].split(" ")[0])
+#         # print("%%"* 20)
+#         # print(tot.columns)
+#         if ir_entry:
+#             top_texts = {"1": [], "-1": []}
+#             top_texts_for_d_df = {"1": [], "-1": []}
+#             for spin in ["1", "-1"]:
+#                 ir_info = tot.loc[tot["spin"] == spin]
+#                 for band_id, band_degeneracy, band_ir in zip(ir_info["band_id"], ir_info["band_degeneracy"],
+#                                                              ir_info["band_ir"]):
+#                     info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+#                     top_texts[spin].append(info)
+#                 top_texts[spin] = top_texts[spin]
+#
+#                 ir_info_for_d_df = tot.loc[(tot["spin"] == spin) & (tot["energy"] > can.vbm) & (tot["energy"] <
+#                                                                                                 can.cbm)]
+#                 for band_id, band_degeneracy, band_ir in zip(ir_info_for_d_df["band_id"], ir_info_for_d_df[
+#                     "band_degeneracy"], ir_info_for_d_df["band_ir"]):
+#                     info = "{}/{}/{}".format(band_id, band_degeneracy, band_ir)
+#                     top_texts_for_d_df[spin].append(info)
+#                 top_texts_for_d_df[spin] = top_texts_for_d_df[spin]
+#
+#     print("D=="*20)
+#     d_df = get_in_gap_transition(tot, edge_tol)
+#     levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
+#                                            edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df)
+#     levels.update({"level_edge_ir": tuple(perturbed_bandedge_ir)})
+#
+#     print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(loose, strict):\n{edge_tol}")
+#     print("D=="*20)
+#     in_gap_levels = get_in_gap_levels(tot, edge_tol)
+#     print("\nTransition (between in-gap levels):\n{}".format(d_df.loc[:, ["up_tran_en", "up_tran_top",
+#                                                                           'up_tran_bottom', "dn_tran_en",
+#                                                                           "dn_tran_top", 'dn_tran_bottom']].T))
+#
+#     if type(clipboard) == tuple:
+#         if clipboard[0] == "tot":
+#             tot.loc[clipboard[1]].to_clipboard("\t")
+#         elif clipboard[0] == "proj":
+#             proj.loc[clipboard[1]].to_clipboard("\t")
+#     elif type(clipboard) == str:
+#         if clipboard == "tot":
+#             tot.to_clipboard("\t")
+#         elif clipboard == "proj":
+#             proj.to_clipboard("\t")
+#         else:
+#             d_df.to_clipboard("\t")
+#
+#     if plot:
+#         cbm_set, vbm_set = None, None
+#         if locpot_c2db or locpot:
+#             cbm_set = can.cbm + can.vacuum_locpot
+#             vbm_set = can.vbm + can.vacuum_locpot
+#             efermi = can.efermi + can.vacuum_locpot
+#         else:
+#             cbm_set = can.cbm
+#             vbm_set = can.vbm
+#             efermi = can.efermi
+#
+#
+#         # dos_plot.nn = [25, 26, 31, 30, 29, 49, 45]
+#         if plot == "eigen":
+#             plt.show()
+#         if plot == "tdos":
+#             dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+#             tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+#             plt.show()
+#             print(dos_plot.nn)
+#         if plot == "site":
+#             dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+#             site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+#             plt.show()
+#         if plot == "spd":
+#             dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+#             spd_dos_plt = dos_plot.spd_plots(energy_upper_bound=2, energy_lower_bound=2)
+#             plt.show()
+#         if plot == "orbital":
+#             dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+#             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
+#             plt.show()
+#         if plot == "all":
+#             dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+#             eig_plt = eigen_plot
+#             plt.show()
+#             tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+#             plt.show()
+#             site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+#             plt.show()
+#             print(f"===Antiste {dos_plot.nn[-1]} PDOS"* 10)
+#             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
+#             plt.show()
+#             for nn in dos_plot.nn[:-1]:
+#                 print(f"===Neighbor {nn} PDOS"* 10)
+#                 dos_plot.orbital_plot(nn, 2, 2)
+#                 plt.show()
+#
+#
+#
+#     if path_save_fig:
+#             for df, df_name in zip([tot, proj, d_df], ["tot", "proj", "d_state"]):
+#                 path = os.path.join(path_save_fig, "xlsx", "{}_{}_{}_{}.xlsx".format(
+#                     can.entry["formula_pretty"],
+#                     can.entry["task_id"],
+#                     can.entry["task_label"],
+#                     df_name
+#                 ))
+#                 df.to_excel(path)
+#
+#     return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
 def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clipboard="tot", locpot=None,
                         threshold=0.1, locpot_c2db=None, ir_db=None, ir_entry_filter=None,
-                        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None) -> object:
+                        is_vacuum_aligment_on_plot=False, edge_tol=(0.25, 0.25), selected_bands=None, dos_setting=None,
+        eigen_plot_setting=None,) -> object:
     """
     When one is using "db_cori_tasks_local", one must set ssh-tunnel as following:
     "ssh -f tsaie79@cori.nersc.gov -L 2222:mongodb07.nersc.gov:27017 -N mongo -u 2DmaterialQuantumComputing_admin -p
@@ -1407,6 +1556,7 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
         threshold=threshold,
         select_bands=selected_bands
     )
+
     # print("checking!"*20, bulk_tot.loc[(bulk_tot["spin"] == "-1") & (bulk_tot.index>=209) & (bulk_tot.index<=216)])
     # print("checking!"*20, tot.loc[(tot["spin"] == "-1") & (tot.index>=209) & (tot.index<=216)])
 
@@ -1451,8 +1601,13 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
 
     print("D=="*20)
     d_df = get_in_gap_transition(tot, edge_tol)
-    levels, eigen_plot = get_eigen_plot_v2(tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
-                                           edge_tol=edge_tol, eigen_plot_title=db_filter["task_id"], transition_d_df=d_df)
+
+    levels, eigen_plot = get_eigen_plot_v3(
+        tot, can, is_vacuum_aligment=is_vacuum_aligment_on_plot,
+        edge_tol=edge_tol, transition_d_df=d_df,
+        eigen_plot_setting=eigen_plot_setting
+    )
+
     levels.update({"level_edge_ir": tuple(perturbed_bandedge_ir)})
 
     print(f"\nIn-gap defect levels based on parameter edge_tol (+, -)=>(loose, strict):\n{edge_tol}")
@@ -1476,67 +1631,101 @@ def get_defect_state_v3(db, db_filter, vbm, cbm, path_save_fig, plot="all", clip
             d_df.to_clipboard("\t")
 
     if plot:
-        cbm_set, vbm_set = None, None
-        if locpot_c2db or locpot:
-            cbm_set = can.cbm + can.vacuum_locpot
-            vbm_set = can.vbm + can.vacuum_locpot
-            efermi = can.efermi + can.vacuum_locpot
-        else:
-            cbm_set = can.cbm
-            vbm_set = can.vbm
-            efermi = can.efermi
+        vacuum_level = can.vacuum_locpot if can.vacuum_locpot else 0
+        print(f"vacuum_level: {vacuum_level: .3f} for DOS plot")
 
+        dos_setting = dos_setting if dos_setting else {}
+        cbm_set, vbm_set = dos_setting.get("cbm_for_plot", None), dos_setting.get("vbm_for_plot", None)
+        # if locpot_c2db or locpot:
+        #     cbm_set = can.cbm - vacuum_level
+        #     vbm_set = can.vbm - vacuum_level
+        #     efermi = can.efermi - vacuum_level
+        # else:
+        if not cbm_set:
+            cbm_set = can.cbm - vacuum_level
+        if not vbm_set:
+            vbm_set = can.vbm - vacuum_level
+        efermi = can.efermi - vacuum_level
 
         # dos_plot.nn = [25, 26, 31, 30, 29, 49, 45]
         if plot == "eigen":
             plt.show()
         if plot == "tdos":
-            dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
-            tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig,
+                sigma=dos_setting.get("sigma", 0.01), vacuum_level=vacuum_level, mark_vbm_cbm=dos_setting.get(
+                    "mark_vbm_cbm", True), mark_efermi=dos_setting.get("mark_efermi", True),
+                )
+            tdos_plt = dos_plot.total_dos(energy_upper_bound=dos_setting.get("upper_bound", 2),
+                                          energy_lower_bound=dos_setting.get("lower_bound", 2))
             plt.show()
             print(dos_plot.nn)
         if plot == "site":
-            dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
-            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+            dos_plot = DosPlot
+            DB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig,
+                sigma=dos_setting.get("sigma", 0.01), vacuum_level=vacuum_level, mark_vbm_cbm=dos_setting.get(
+                    "mark_vbm_cbm", True), mark_efermi=dos_setting.get("mark_efermi", True),
+                )
+            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=dos_setting.get("upper_bound", 2),
+                                                energy_lower_bound=dos_setting.get("lower_bound", 2))
+            plt.show()
+            print(dos_plot.nn)
             plt.show()
         if plot == "spd":
-            dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
-            spd_dos_plt = dos_plot.spd_plots(energy_upper_bound=2, energy_lower_bound=2)
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig,
+                sigma=dos_setting.get("sigma", 0.01), vacuum_level=vacuum_level, mark_vbm_cbm=dos_setting.get(
+                    "mark_vbm_cbm", True), mark_efermi=dos_setting.get("mark_efermi", True),
+                )
+            spd_dos_plt = dos_plot.spd_plots(energy_upper_bound=dos_setting.get("upper_bound", 2),
+                                             energy_lower_bound=dos_setting.get("lower_bound", 2))
+            plt.show()
+            print(dos_plot.nn)
             plt.show()
         if plot == "orbital":
-            dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig,
+                sigma=dos_setting.get("sigma", 0.01), vacuum_level=vacuum_level, mark_vbm_cbm=dos_setting.get(
+                    "mark_vbm_cbm", True), mark_efermi=dos_setting.get("mark_efermi", True),
+                )
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
             plt.show()
         if plot == "all":
-            dos_plot = DosPlotDB(db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig)
+            dos_plot = DosPlotDB(
+                db=db, db_filter=db_filter, cbm=cbm_set, vbm=vbm_set, efermi=efermi, path_save_fig=path_save_fig,
+                sigma=dos_setting.get("sigma", 0.01), vacuum_level=vacuum_level, mark_vbm_cbm=dos_setting.get(
+                    "mark_vbm_cbm", True), mark_efermi=dos_setting.get("mark_efermi", True),
+                )
             eig_plt = eigen_plot
             plt.show()
-            tdos_plt = dos_plot.total_dos(energy_upper_bound=2, energy_lower_bound=2)
+            tdos_plt = dos_plot.total_dos(energy_upper_bound=dos_setting.get("upper_bound", 2),
+                                          energy_lower_bound=dos_setting.get("lower_bound", 2))
             plt.show()
-            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=2, energy_lower_bound=2)
+            site_dos_plt = dos_plot.sites_plots(energy_upper_bound=dos_setting.get("upper_bound", 2),
+                                                energy_lower_bound=dos_setting.get("lower_bound", 2))
             plt.show()
-            print(f"===Antiste {dos_plot.nn[-1]} PDOS"* 10)
+            print(f"===Antiste {dos_plot.nn[-1]} PDOS" * 10)
             orbital_dos_plt = dos_plot.orbital_plot(dos_plot.nn[-1], 2, 2)
             plt.show()
             for nn in dos_plot.nn[:-1]:
-                print(f"===Neighbor {nn} PDOS"* 10)
+                print(f"===Neighbor {nn} PDOS" * 10)
                 dos_plot.orbital_plot(nn, 2, 2)
                 plt.show()
 
-
-
     if path_save_fig:
-            for df, df_name in zip([tot, proj, d_df], ["tot", "proj", "d_state"]):
-                path = os.path.join(path_save_fig, "xlsx", "{}_{}_{}_{}.xlsx".format(
+        for df, df_name in zip([tot, proj, d_df], ["tot", "proj", "d_state"]):
+            path = os.path.join(
+                path_save_fig, "xlsx", "{}_{}_{}_{}.xlsx".format(
                     can.entry["formula_pretty"],
                     can.entry["task_id"],
                     can.entry["task_label"],
                     df_name
-                ))
-                df.to_excel(path)
+                )
+                )
+            df.to_excel(path)
 
     return eigen_plot, tot, proj, d_df, levels, in_gap_levels, bulk_tot, bandedge_bulk_tot
-
 
 def get_defect_state_v4(
         db,
