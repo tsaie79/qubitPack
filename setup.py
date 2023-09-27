@@ -14,9 +14,9 @@ setup(
         "#egg=pymatgen_db",
         "pymatgen_diffusion@git+https://github.com/materialsvirtuallab/pymatgen-analysis-diffusion.git"
         "@51d84ea1fd034941baa22d4b1b8610a4cc6fb801#egg=pymatgen_diffusion",
-        "ase@git+ssh://git@github.com/rosswhitfield/ase.git@07de35654601ddbb2b23a4e7df7091696b0af108#egg=ase",
+        # "ase@git+ssh://git@github.com/rosswhitfield/ase.git@07de35654601ddbb2b23a4e7df7091696b0af108#egg=ase",
         # add ase from github with the version 3.18.1
-        # "ase==3.18.1",
+        "ase@git+https://github.com/rosswhitfield/ase.git@07de35654601ddbb2b23a4e7df7091696b0af108#egg=ase",
         "pycdt@git+https://github.com/tsaie79/pycdt.git@master#egg=pycdt",
         "pymatgen@git+https://github.com/tsaie79/pymatgen.git@master#egg=pymatgen",
         "atomate@git+https://github.com/tsaie79/atomate.git@master#egg=atomate",
